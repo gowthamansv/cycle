@@ -1,9 +1,10 @@
-import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
+import { ApplicationConfig, provideAppInitializer, provideBrowserGlobalErrorListeners, inject } from '@angular/core';
 import { provideRouter } from '@angular/router';
 
 import { routes } from './app.routes';
 import { providePrimeNG } from 'primeng/config';
-import Aura from '@primeuix/themes/aura';
+import { BicyclePreset } from './theme/bicycle-theme.preset';
+import { ThemeService } from './theme/theme.service';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -11,8 +12,15 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes),
     providePrimeNG({
       theme: {
-        preset: Aura,
+        preset: BicyclePreset,
+        options: {
+          darkModeSelector: '.app-dark',
+        },
       },
+    }),
+    provideAppInitializer(() => {
+      const themeService = inject(ThemeService);
+      themeService.initTheme();
     }),
   ],
 };

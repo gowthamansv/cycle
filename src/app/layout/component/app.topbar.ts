@@ -1,20 +1,28 @@
-import { Component, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { MenubarModule } from 'primeng/menubar';
 import { IconFieldModule } from 'primeng/iconfield';
 import { InputIconModule } from 'primeng/inputicon';
 import { InputTextModule } from 'primeng/inputtext';
+import { ThemeService } from '../../theme/theme.service';
+import { ThemeDrawerComponent } from '../../theme/theme-drawer.component';
 
 @Component({
   selector: 'app-topbar',
   standalone: true,
-  imports: [MenubarModule, IconFieldModule, InputIconModule, InputTextModule],
+  imports: [
+    MenubarModule,
+    IconFieldModule,
+    InputIconModule,
+    InputTextModule,
+    ThemeDrawerComponent,
+  ],
 
   template: `
     <header class="topbar">
       <!-- LOGO -->
       <div class="logo-section">
-        <img src="../../../../public/assets/images/logo.png" alt="Cycle Admin" class="logo" />
+        <img src="assets/images/logo.png" alt="Cycle Admin" class="logo" />
       </div>
 
       <!-- DESKTOP NAVIGATION -->
@@ -45,6 +53,7 @@ import { InputTextModule } from 'primeng/inputtext';
           type="button"
           (click)="goToSettings()"
           aria-label="Settings"
+          title="Theme Settings"
         >
           <i class="pi pi-cog"></i>
         </button>
@@ -67,321 +76,222 @@ import { InputTextModule } from 'primeng/inputtext';
         </div>
       </div>
     </header>
+
+    <!-- THEME SETTINGS DRAWER -->
+    <app-theme-drawer />
   `,
 
   styles: [
     `
       /* =========================================
-   TOPBAR
-========================================= */
+         TOPBAR / NAVBAR
+         Contrast-preserving backdrop ensures 
+         universal readability across any page background
+      ========================================= */
 
       .topbar {
         width: 100%;
         height: 72px;
-
         display: flex;
         align-items: center;
-
         padding: 0 28px;
         gap: 20px;
-
-        background: #4b5563;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-
+        background: var(--surface-card, #121212);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border-bottom: 1px solid var(--surface-border, rgba(255, 255, 255, 0.12));
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
         box-sizing: border-box;
-
         position: relative;
         z-index: 1000;
+        transition: background-color 0.25s ease, border-color 0.25s ease;
       }
 
-      /* =========================================
-   LOGO
-========================================= */
-
+      /* LOGO */
       .logo-section {
         display: flex;
         align-items: center;
-
         flex: 0 0 auto;
       }
 
       .logo {
         width: 44px;
         height: 44px;
-
         object-fit: contain;
       }
 
-      /* =========================================
-   NAVIGATION
-========================================= */
-
+      /* NAVIGATION */
       .navigation {
         flex: 1 1 auto;
-
         min-width: 0;
-
         display: flex;
         align-items: center;
       }
-
-      /* =========================================
-   PRIMENG MENUBAR
-========================================= */
-
-      /*
-   PrimeNG Menubar has its own background.
-   Override it so it becomes part of the
-   same #4b5563 topbar.
-*/
 
       :host ::ng-deep .admin-menubar {
         width: 100%;
-
         background: transparent !important;
         border: none !important;
-
         padding: 0 !important;
-
         border-radius: 0 !important;
       }
 
-      /* Menu items */
-
       :host ::ng-deep .admin-menubar .p-menubar-root-list {
         background: transparent !important;
-
         display: flex;
         align-items: center;
-
         gap: 4px;
       }
 
-      /* Menu item links */
-
       :host ::ng-deep .admin-menubar .p-menubar-item-link {
-        color: #ffffff !important;
-
+        color: var(--text-color, #ffffff) !important;
         background: transparent !important;
-
-        border-radius: 8px;
-
-        padding: 10px 12px;
-
+        border-radius: 6px;
+        padding: 8px 12px;
         white-space: nowrap;
-
-        transition:
-          background 0.2s ease,
-          color 0.2s ease;
+        font-weight: 500;
+        transition: background-color 0.2s ease, color 0.2s ease;
       }
 
-      /* Hover */
-
-      :host ::ng-deep .admin-menubar .p-menubar-item-link:hover {
-        background: rgba(255, 255, 255, 0.1) !important;
-
-        color: #ff6a00 !important;
+      :host ::ng-deep .admin-menubar .p-menubar-item-link:hover,
+      :host ::ng-deep .admin-menubar .p-menubar-item.p-focus > .p-menubar-item-content .p-menubar-item-link,
+      :host ::ng-deep .admin-menubar .p-menubar-item-active > .p-menubar-item-content .p-menubar-item-link {
+        background: var(--surface-hover, rgba(255, 255, 255, 0.08)) !important;
+        color: var(--primary-color, #ff6a00) !important;
       }
-
-      /* Icons */
 
       :host ::ng-deep .admin-menubar .p-menuitem-icon {
         color: inherit !important;
       }
 
-      /* Dropdown panels */
-
       :host ::ng-deep .admin-menubar .p-menubar-submenu {
-        background: #ffffff !important;
-
-        border: 1px solid #e5e7eb;
-
-        border-radius: 8px;
-
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        background: var(--surface-overlay, var(--surface-card, #ffffff)) !important;
+        border: 1px solid var(--surface-border, #e5e7eb) !important;
+        border-radius: 8px !important;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2) !important;
+        padding: 0.5rem !important;
       }
 
-      /* Dropdown text */
-
-      :host ::ng-deep .admin-menubar .p-menuitem-link {
-        color: #374151 !important;
+      :host ::ng-deep .admin-menubar .p-menubar-submenu .p-menuitem-link {
+        color: var(--text-color, #1f2937) !important;
+        border-radius: 6px;
+        padding: 8px 12px;
+        transition: background-color 0.2s ease, color 0.2s ease;
       }
 
-      /* Dropdown hover */
-
-      :host ::ng-deep .admin-menubar .p-menubar-submenu .p-menuitem-link:hover {
-        background: #f3f4f6 !important;
-
-        color: #ff6a00 !important;
+      :host ::ng-deep .admin-menubar .p-menubar-submenu .p-menuitem-link:hover,
+      :host ::ng-deep .admin-menubar .p-menubar-submenu .p-menubar-item.p-focus > .p-menubar-item-content .p-menubar-item-link {
+        background: var(--surface-hover, #f3f4f6) !important;
+        color: var(--primary-color, #ff6a00) !important;
       }
 
-      /* =========================================
-   SEARCH
-========================================= */
-
+      /* SEARCH */
       .search-section {
         flex: 0 1 220px;
-
         min-width: 160px;
-
         display: flex;
         align-items: center;
       }
-
-      /*
-   Prevent PrimeNG IconField from collapsing.
-*/
 
       .desktop-search {
         width: 100%;
-
         display: block;
       }
 
-      /*
-   Input itself must occupy full width.
-*/
-
       :host ::ng-deep .desktop-search input {
         width: 100%;
-
         min-width: 0;
-
         box-sizing: border-box;
-
-        background: rgba(255, 255, 255, 0.12);
-
-        border: 1px solid rgba(255, 255, 255, 0.2);
-
-        color: #ffffff;
-
+        background: var(--surface-ground, rgba(255, 255, 255, 0.08));
+        border: 1px solid var(--surface-border, rgba(255, 255, 255, 0.2));
+        color: var(--text-color, #ffffff);
         border-radius: 8px;
-
         padding: 10px 12px 10px 38px;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
       }
 
       :host ::ng-deep .desktop-search input::placeholder {
-        color: rgba(255, 255, 255, 0.65);
+        color: var(--text-color-secondary, #a3a3a3);
       }
 
       :host ::ng-deep .desktop-search input:focus {
-        border-color: #ff6a00;
-
-        box-shadow: 0 0 0 2px rgba(255, 106, 0, 0.15);
+        border-color: var(--primary-color, #ff6a00);
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary-color, #ff6a00) 25%, transparent);
       }
-
-      /* Search icon */
 
       :host ::ng-deep .desktop-search .p-inputicon {
-        color: #d1d5db;
+        color: var(--text-color-secondary, #d1d5db);
       }
-
-      /* Mobile search button */
 
       .mobile-search-btn {
         display: none;
-
         width: 40px;
         height: 40px;
-
         align-items: center;
         justify-content: center;
-
         border: none;
         border-radius: 8px;
-
         background: transparent;
-
-        color: #ffffff;
-
+        color: var(--text-color, #ffffff);
         cursor: pointer;
-
         font-size: 18px;
+        transition: background-color 0.2s ease, color 0.2s ease;
       }
 
       .mobile-search-btn:hover {
-        background: rgba(255, 255, 255, 0.1);
-
-        color: #ff6a00;
+        background: var(--surface-hover, rgba(255, 255, 255, 0.1));
+        color: var(--primary-color, #ff6a00);
       }
 
-      /* =========================================
-   RIGHT ACTIONS
-========================================= */
-
+      /* RIGHT ACTIONS */
       .topbar-actions {
         flex: 0 0 auto;
-
         display: flex;
         align-items: center;
-
         gap: 12px;
       }
 
-      /* =========================================
-   SETTINGS
-========================================= */
-
+      /* SETTINGS */
       .action-btn {
         width: 40px;
         height: 40px;
-
         display: flex;
         align-items: center;
         justify-content: center;
-
         border: none;
         border-radius: 8px;
-
         background: transparent;
-
-        color: #ffffff;
-
+        color: var(--text-color, #ffffff);
         cursor: pointer;
-
         font-size: 18px;
-
-        transition:
-          background 0.2s ease,
-          color 0.2s ease;
+        transition: background-color 0.2s ease, color 0.2s ease;
       }
 
       .action-btn:hover {
-        background: rgba(255, 255, 255, 0.1);
-
-        color: #ff6a00;
+        background: var(--surface-hover, rgba(255, 255, 255, 0.1));
+        color: var(--primary-color, #ff6a00);
       }
 
-      /* =========================================
-   USER
-========================================= */
-
+      /* USER */
       .user-section {
         display: flex;
         align-items: center;
-
         gap: 10px;
-
         padding-left: 14px;
-
-        border-left: 1px solid rgba(255, 255, 255, 0.2);
+        border-left: 1px solid var(--surface-border, rgba(255, 255, 255, 0.2));
       }
 
       .avatar {
         width: 40px;
         height: 40px;
-
         display: flex;
         align-items: center;
         justify-content: center;
-
         flex: 0 0 auto;
-
-        background: #ff6a00;
-
-        color: #ffffff;
-
+        background: var(--primary-color, #ff6a00);
+        color: var(--primary-contrast-color, #ffffff);
         border-radius: 50%;
+        transition: background-color 0.2s ease;
       }
 
       .avatar i {
@@ -391,53 +301,39 @@ import { InputTextModule } from 'primeng/inputtext';
       .user-details {
         display: flex;
         flex-direction: column;
-
         min-width: 90px;
       }
 
       .user-name {
         font-size: 14px;
-
         font-weight: 600;
-
-        color: #ffffff;
+        color: var(--text-color, #ffffff);
       }
 
       .user-role {
         font-size: 12px;
-
-        color: #d1d5db;
+        color: var(--text-color-secondary, #d1d5db);
       }
 
-      /* =========================================
-   LOGOUT
-========================================= */
-
+      /* LOGOUT */
       .logout-btn {
         width: 38px;
         height: 38px;
-
         display: flex;
         align-items: center;
         justify-content: center;
-
         flex: 0 0 auto;
-
         border: none;
         border-radius: 8px;
-
         background: transparent;
-
         color: #fca5a5;
-
         cursor: pointer;
-
         font-size: 17px;
+        transition: background-color 0.2s ease, color 0.2s ease;
       }
 
       .logout-btn:hover {
-        background: rgba(255, 255, 255, 0.1);
-
+        background: var(--surface-hover, rgba(255, 255, 255, 0.1));
         color: #ef4444;
       }
 
@@ -532,7 +428,9 @@ import { InputTextModule } from 'primeng/inputtext';
         }
 
         .settings-btn {
-          display: none;
+          display: inline-flex;
+          width: 36px;
+          height: 36px;
         }
 
         /* User */
@@ -577,6 +475,11 @@ import { InputTextModule } from 'primeng/inputtext';
           height: 36px;
         }
 
+        .settings-btn {
+          width: 34px;
+          height: 34px;
+        }
+
         .avatar {
           width: 36px;
           height: 36px;
@@ -591,16 +494,17 @@ import { InputTextModule } from 'primeng/inputtext';
   ],
 })
 export class AppTopbar {
+  themeService = inject(ThemeService);
+  private router = inject(Router);
+
   mobileMenuOpen = signal(false);
 
   toggleMobileMenu() {
     this.mobileMenuOpen.update((value) => !value);
   }
 
-  constructor(private router: Router) {}
-
   goToSettings() {
-    this.router.navigate(['/settings']);
+    this.themeService.openSettings();
   }
 
   logout() {
