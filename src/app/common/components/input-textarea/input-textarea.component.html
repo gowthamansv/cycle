@@ -1,0 +1,24 @@
+<div class="flex flex-col gap-2">
+    <label [for]="label()" [class.p-error]="hasError()" class="font-semibold">{{
+        computdLabel()
+    }}</label>
+    <textarea
+        [rows]="rows()"
+        [cols]="cols()"
+        pTextarea
+        [autoResize]="autoResize()"
+        [id]="label()"
+        [class.ng-invalid]="hasError()"
+        [class.ng-dirty]="hasError()"
+        [formControl]="ngControl.control"
+        (blur)="onBlur()"
+        fluid
+    ></textarea>
+    @if (hasError()) {
+        <div class="p-error">
+            @for (error of getErrors(); track error) {
+                <small>{{ error }}</small> <br />
+            }
+        </div>
+    }
+</div>

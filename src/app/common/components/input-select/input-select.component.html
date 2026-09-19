@@ -1,0 +1,45 @@
+<div class="flex flex-col gap-2">
+    <label [for]="label()" [class.p-error]="hasError()" class="font-semibold">{{
+        computdLabel()
+    }}</label>
+    @if (multiple()) {
+        <p-multiselect
+            [id]="label()"
+            appendTo="body"
+            [loading]="loading()"
+            [options]="options()"
+            [optionLabel]="optionLabel()"
+            [optionValue]="optionValue()"
+            [showClear]="showClear()"
+            [filter]="filter()"
+            [display]="display()"
+            [placeholder]="`Select a ${label()}` | translate: { label: label() }"
+            [class.ng-invalid]="hasError()"
+            [class.ng-dirty]="hasError()"
+            [formControl]="ngControl.control"
+            autocomplete="off"
+        />
+    } @else {
+        <p-select
+            [id]="label()"
+            appendTo="body"
+            [loading]="loading()"
+            [options]="options()"
+            [optionLabel]="optionLabel()"
+            [optionValue]="optionValue()"
+            [showClear]="showClear()"
+            [filter]="filter()"
+            [placeholder]="`Select a ${label()}` | translate: { label: label() }"
+            [class.ng-dirty]="hasError()"
+            [formControl]="ngControl.control"
+            autocomplete="off"
+        />
+    }
+    @if (hasError()) {
+        <div class="p-error">
+            @for (error of getErrors(); track error) {
+                <small>{{ error }}</small> <br />
+            }
+        </div>
+    }
+</div>

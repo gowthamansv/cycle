@@ -1,0 +1,12 @@
+<div class="grid mb-2 gap-4">
+    <p class="text-center" [innerText]="message()"></p>
+</div>
+<div class="grid grid-cols-2 gap-6 mb-6"></div>
+<div class="flex gap-12 justify-center">
+    <p-button type="submit" [label]="'Confirm' | translate" (click)="onYes()" />
+    <p-button
+        [label]="'Exit' | translate"
+        severity="secondary"
+        (click)="onCancel()"
+    />
+</div>

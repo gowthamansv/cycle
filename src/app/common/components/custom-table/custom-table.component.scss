@@ -1,0 +1,291 @@
+// :host ::ng-deep th.filtered-col {
+//     font-weight: 700;
+//     color: #ff7300;
+//     background-color: #eef6ff;
+// }
+
+// :host ::ng-deep th.filtered-col > div {
+//     font-weight: 700;
+// }
+
+// :host ::ng-deep .p-datatable-tbody > tr > td {
+//     padding: 4px 8px !important;
+//     font-size: 13px;
+//     line-height: 1.2;
+// }
+
+// :host ::ng-deep .p-datatable {
+//     --p-table-cell-padding: 4px 8px;
+// }
+
+// :host ::ng-deep .p-datatable-header {
+//     padding-left: 1 !important;
+//     padding-right: 1 !important;
+//     padding-top: 0 !important;
+//     padding-bottom: 0 !important;
+//     margin: 0;
+// }
+
+// :host ::ng-deep .p-datatable-header .flex {
+//     gap: 0.25rem !important;
+//     padding: 1 !important;
+// }
+
+// .p-datatable .p-datatable-thead > tr {
+//     height: 1rem;
+// }
+::ng-deep .p-datatable .p-datatable-tbody > tr > td,
+::ng-deep .p-datatable .p-datatable-thead > tr > th {
+    line-height: 1.2;
+    text-align: left !important;
+}
+// :host ::ng-deep .p-datatable-thead > tr > th {
+//     padding: 4px 8px !important;
+//     height: 30px !important;
+//     font-size: 13px;
+//     line-height: 1.2;
+// }
+
+// :host ::ng-deep .p-datatable-thead > tr > th .flex {
+//     gap: 0.25rem !important;
+//     align-items: center;
+// }
+
+// :host ::ng-deep .p-datatable-thead > tr > th .column-label {
+//     font-weight: 700;
+//     font-size: 13.5px;
+// }
+
+// :host ::ng-deep .p-datatable-thead p-sortIcon,
+// :host ::ng-deep .p-datatable-thead p-columnFilter {
+//     transform: scale(0.9);
+//     margin-left: 2px;
+// }
+// .filtered-text {
+//     color: #fa812f !important;
+//     transition: color 0.3s ease;
+// }
+// ::ng-deep .p-menu .p-menu-list {
+//     max-height: 300px !important;
+//     overflow-y: auto !important;
+// }
+:host ::ng-deep .highlight-notes {
+    background-color: #fff3a0 !important;
+    font-weight: 600;
+}
+
+/* ===== TABLE WRAPPER ===== */
+:host ::ng-deep .p-datatable {
+    background: #ffffff;
+    border-radius: 12px;
+    overflow: hidden; /* Keeps border-radius clipping */
+    box-shadow: none;
+}
+
+:host ::ng-deep .p-datatable-sm thead > tr > th {
+    background-color: color-mix(
+        in srgb,
+        var(--primary-color) 7%,
+        transparent
+    ) !important;
+    color: var(--primary-color) !important; /* ✅ text-primary */
+
+    font-weight: 700;
+    font-size: 14px;
+    text-align: center;
+    vertical-align: middle;
+    padding: 12px 16px;
+
+    border-bottom: 2px solid var(--surface-border);
+}
+
+/* ===== HEADER CELLS ===== */
+// :host ::ng-deep .p-datatable thead > tr > th {
+//     background: #ffffff !important;
+//     font-weight: 600;
+//     font-size: 14px;
+//     padding: 16px;
+// }
+
+/* ===== SORT & FILTER ICONS ===== */
+:host ::ng-deep .p-sortable-column .p-sortable-column-icon {
+    color: var(--primary) !important;
+    font-size: 12px;
+    margin-left: 6px;
+}
+
+:host ::ng-deep .p-column-filter-menu-button {
+    color: var(--primary) !important;
+    background: transparent !important;
+    border: none !important;
+}
+
+/* ===== BODY ROWS ===== */
+:host ::ng-deep .p-datatable tbody > tr {
+    background: #ffffff !important;
+    /* Remove border from row to avoid double borders – border is applied to cells */
+}
+
+:host ::ng-deep .p-datatable tbody > tr:hover {
+    background: #ffffff !important; /* No hover effect */
+}
+
+/* ===== BODY CELLS ===== */
+:host ::ng-deep .p-datatable tbody > tr > td {
+    padding: 18px 16px;
+    font-size: 14px;
+    color: #374151;
+    border-bottom: 1px solid #e5e7eb !important; /* Single bottom border per cell */
+}
+
+/* ===== SPECIAL CELL CONTENT ===== */
+:host ::ng-deep .receipt-link {
+    color: #1e40af;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+:host ::ng-deep .receipt-link:hover {
+    text-decoration: underline;
+}
+
+/* Status text – only color, no background */
+:host ::ng-deep .status-new {
+    color: #2563eb;
+    font-weight: 600;
+}
+
+:host ::ng-deep .status-received {
+    color: #15803d;
+    font-weight: 600;
+}
+
+/* ===== CHECKBOX ===== */
+// :host ::ng-deep .p-checkbox .p-checkbox-box {
+//   border-radius: 4px;
+//   --p-checkbox-icon-checked-color:var(--primary) !important;
+
+//   border: 1px solid #d1d5db;
+//   background: transparent !important;
+// }
+
+// :host ::ng-deep .p-checkbox .p-checkbox-box.p-highlight {
+//   background: transparent !important;
+//   color: var(--primary) !important;
+// }
+
+/* ===== ACTION ICON ===== */
+:host ::ng-deep .pi-pencil {
+    color: #4f46e5;
+    font-size: 16px;
+}
+
+/* ===== PAGINATOR ===== */
+:host ::ng-deep .p-paginator {
+    background: #ffffff;
+    border: none !important;
+    padding: 8px 16px;
+}
+
+:host ::ng-deep .p-paginator .p-paginator-page {
+    background: transparent !important;
+    border: none;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+:host ::ng-deep .p-paginator .p-paginator-page.p-highlight {
+    background: transparent !important;
+    color: var(--primary) !important;
+    font-weight: 600;
+}
+
+/* Rows per page dropdown */
+:host ::ng-deep .p-dropdown {
+    border: 1px solid #e5e7eb;
+    border-radius: 20px;
+    background: transparent;
+}
+
+/* ===== SCROLLBAR (thin style) ===== */
+:host ::ng-deep .p-datatable-scrollable-body {
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: #c1c1c1 transparent; /* Firefox */
+}
+
+:host ::ng-deep .p-datatable-scrollable-body::-webkit-scrollbar {
+    width: 2px; /* vertical */
+    height: 2px; /* horizontal */
+}
+
+:host ::ng-deep .p-datatable-scrollable-body::-webkit-scrollbar-thumb {
+    background-color: #c1c1c1;
+    border-radius: 3px;
+}
+
+:host ::ng-deep .p-datatable-scrollable-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* ===== GRIDLINE OVERRIDES (if you ever use gridlines) ===== */
+:host ::ng-deep .p-datatable-gridlines .p-datatable-thead > tr > th,
+:host ::ng-deep .p-datatable-gridlines .p-datatable-tbody > tr > td {
+    border-width: 0 0 1px 0 !important; /* Keep only bottom border */
+}
+
+/* ===== TABLE CELLS CENTERED ===== */
+:host ::ng-deep .p-datatable th,
+:host ::ng-deep .p-datatable td {
+    text-align: center !important; /* horizontal center */
+    vertical-align: middle !important; /* vertical center */
+    padding: 0.5rem 0.75rem; /* optional compact spacing */
+}
+
+/* ===== FLEX ITEMS INSIDE CELLS CENTERED ===== */
+:host ::ng-deep .p-datatable td .flex,
+:host ::ng-deep .p-datatable th .flex {
+    justify-content: center !important;
+    align-items: center !important;
+}
+
+/* ===== ACTION ICONS LINE ===== */
+:host ::ng-deep .action-cell .flex {
+    gap: 0.5rem; /* optional small spacing between icons */
+}
+
+/* ===== TAG CENTERING ===== */
+:host ::ng-deep p-tag {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%; /* ensures tag is centered in cell */
+}
+
+/* ===== IMAGE CENTERING ===== */
+:host ::ng-deep td img {
+    display: block;
+    margin: 0 auto;
+}
+/* Even rows - light gray */
+:host ::ng-deep .p-datatable tbody > tr:nth-child(even) {
+    // background: #dee2e6 !important;
+    background-color: color-mix(
+        in srgb,
+        var(--primary-color) 7%,
+        transparent
+    ) !important;
+}
+
+/* Odd rows - white */
+:host ::ng-deep .p-datatable tbody > tr:nth-child(odd) {
+    background: #ffffff !important;
+}
+
+/* Optional: hover effect */
+:host ::ng-deep .p-datatable tbody > tr:hover {
+    background-color: color-mix(
+        in srgb,
+        var(--primary-color) 6%,
+        transparent
+    ) !important;
+}

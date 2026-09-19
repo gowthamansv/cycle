@@ -1,0 +1,397 @@
+<p-table
+    #dt
+    [columns]="visibleColumns()"
+    [value]="data()"
+    [loading]="loading()"
+    showLoader="false"
+    showGridlines
+    stripedRows
+    size="small"
+    [paginator]="true"
+    [rows]="tableOptions().initialRows"
+    [rowsPerPageOptions]="tableOptions().rowsPerPageOptions"
+    [tableStyle]="{ 'min-width': '50rem' }"
+    styleClass="p-datatable-sm"
+    [rowsPerPageOptions]="[5, 10, 15, 20]"
+    sortMode="multiple"
+    [globalFilterFields]="globalFilterColumns()"
+    [selectionMode]="selectionMode()"
+    [(selection)]="selectedData"
+    [metaKeySelection]="false"
+    [selectionPageOnly]="true"
+    [dataKey]="dataKey()"
+    [scrollable]="true"
+    scrollHeight="flex"
+    [resizableColumns]="true"
+    columnResizeMode="expand"
+    [reorderableColumns]="true"
+    [currentPageReportTemplate]="
+        'Showing {first} to {last} of {totalRecords} ' + title()
+    "
+    [showCurrentPageReport]="true"
+    [title]="''"
+>
+    <ng-template pTemplate="loadingIcon">
+        <p-progress-spinner strokeWidth="8" ariaLabel="loading" />
+    </ng-template>
+    <ng-template #caption>
+        <div class="flex items-center">
+            <!-- <h2 class="text-2xl m-1">ASN</h2> -->
+        </div>
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center justify-start gap-2">
+                <h2 class="text-2xl m-1">{{ title() }}</h2>
+                <ng-template #defaultActionTemplate>
+                    <p-fileUpload
+                        mode="basic"
+                        [maxFileSize]="1000000"
+                        chooseLabel="Import"
+                        accept=".xlsx"
+                        auto
+                        (uploadHandler)="onFileSelection($event)"
+                        customUpload
+                        class="inline-block"
+                        [chooseButtonProps]="{ severity: 'secondary' }"
+                    ></p-fileUpload>
+                    <p-button
+                        icon="fa-solid fa-plus"
+                        (click)="onCreateAction()"
+                        tooltipPosition="bottom"
+                        [pTooltip]="'Create'"
+                    />
+                    <p-button
+                        (click)="onDeleteAction()"
+                        icon="pi pi-trash"
+                        [disabled]="!enableButtonOnOneOrMoreSelection()"
+                        tooltipPosition="bottom"
+                        pTooltip="Delete"
+                    />
+                </ng-template>
+
+                <ng-container
+                    *ngTemplateOutlet="
+                        customActionTemplate()
+                            ? customActionTemplate()!
+                            : defaultActionTemplate
+                    "
+                ></ng-container>
+            </div>
+
+            <div
+                class="flex flex-wrap items-center gap-2 px-2 py-1 m-1 rounded-xl bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border border-slate-200 dark:border-slate-700 shadow-[0_8px_30px_rgba(0,0,0,0.08)]"
+            >
+                <!-- Search -->
+                <p-iconfield
+                    class="flex items-center rounded-xl bg-slate-100 dark:bg-slate-800 px-2"
+                >
+                    <p-inputicon styleClass="pi pi-search text-slate-400" />
+                    <input
+                        pInputText
+                        type="text"
+                        class="w-full md:w-56 !bg-transparent !border-0 focus:ring-0 text-sm"
+                        (input)="globalFilter($event)"
+                        [(ngModel)]="searchInput"
+                        [placeholder]="'Search...' | translate"
+                        [pTooltip]="'Search' | translate"
+                        tooltipPosition="bottom"
+                    />
+                </p-iconfield>
+
+                <!-- Clear -->
+                <p-button
+                    icon="pi pi-filter-slash"
+                    (click)="clear()"
+                    [pTooltip]="'Clear' | translate"
+                    tooltipPosition="bottom"
+                    styleClass="
+            !h-9 !w-9
+            !rounded-xl
+            !bg-rose-500/10
+            !text-rose-600
+            !border-0
+            hover:!bg-rose-500
+            hover:!text-white
+            transition-all duration-300
+        "
+                />
+
+                <!-- Refresh -->
+                <p-button
+                    icon="pi pi-refresh"
+                    (click)="refreshData()"
+                    [pTooltip]="'Refresh' | translate"
+                    tooltipPosition="bottom"
+                    styleClass="
+            !h-9 !w-9
+            !rounded-xl
+            !bg-sky-500/10
+            !text-sky-600
+            !border-0
+            hover:!bg-sky-500
+            hover:!text-white
+            hover:rotate-180
+            transition-all duration-500
+        "
+                />
+
+                <!-- Column Settings -->
+                <p-button
+                    icon="pi pi-sliders-h"
+                    (click)="showColumnsSettingsDialog()"
+                    [pTooltip]="'Column Settings' | translate"
+                    tooltipPosition="bottom"
+                    styleClass="
+            !h-9 !w-9
+            !rounded-xl
+            !bg-violet-500/10
+            !text-violet-600
+            !border-0
+            hover:!bg-violet-500
+            hover:!text-white
+            transition-all duration-300
+        "
+                />
+                @if (enableExport()) {
+                    <!-- Export -->
+                    <div class="relative">
+                        <p-menu
+                            #menu
+                            [model]="exportTypes"
+                            appendTo="body"
+                            [popup]="true"
+                        />
+                        <p-button
+                            icon="pi pi-upload"
+                            (click)="menu.toggle($event)"
+                            [pTooltip]="'Export Data' | translate"
+                            tooltipPosition="bottom"
+                            styleClass="
+                !h-9 !w-9
+                !rounded-xl
+                !bg-emerald-500/10
+                !text-emerald-600
+                !border-0
+                hover:!bg-emerald-500
+                hover:!text-white
+                transition-all duration-300
+            "
+                        />
+                    </div>
+                }
+            </div>
+        </div>
+    </ng-template>
+
+    <ng-template #header let-columns>
+        <ng-template #defaultHeaderTemplate>
+            <tr>
+                @if (selectionMode() === "multiple") {
+                    <th>
+                        <p-tableHeaderCheckbox />
+                    </th>
+                }
+                @if (enableEdit()) {
+                    <th>Actions</th>
+                }
+                @for (column of columns; track column.field) {
+                    @if (column.type === "select") {
+                        <th
+                            [pSortableColumn]="column.field"
+                            style="min-width: 14rem"
+                        >
+                            <div
+                                class="flex gap-2 justify-between items-center"
+                            >
+                                {{ column.label }}
+                                <p-sortIcon [field]="column.field" />
+                                <p-columnFilter
+                                    [field]="column.field"
+                                    matchMode="in"
+                                    display="menu"
+                                    [showMatchModes]="false"
+                                    [showOperator]="false"
+                                    [showAddButton]="false"
+                                    class="ml-auto"
+                                >
+                                    <ng-template
+                                        #filter
+                                        let-value
+                                        let-filter="filterCallback"
+                                    >
+                                        <p-multiselect
+                                            [filter]="false"
+                                            [ngModel]="value"
+                                            [options]="options(column.field)"
+                                            placeholder="Any"
+                                            (onChange)="filter($event.value)"
+                                            optionLabel="label"
+                                            optionValue="value"
+                                            class="w-full"
+                                        >
+                                            <ng-template let-option #item>
+                                                <div
+                                                    class="flex items-center gap-2"
+                                                >
+                                                    <span>{{
+                                                        option.label
+                                                    }}</span>
+                                                </div>
+                                            </ng-template>
+                                        </p-multiselect>
+                                    </ng-template>
+                                </p-columnFilter>
+                            </div>
+                        </th>
+                    } @else {
+                        <th
+                            pResizableColumn
+                            pReorderableColumn
+                            [pSortableColumn]="column.field"
+                        >
+                            <div
+                                class="flex gap-2 justify-between items-center"
+                            >
+                                {{ column.label }}
+                                <p-sortIcon [field]="column.field" />
+                                <p-columnFilter
+                                    [type]="
+                                        column.type === 'number'
+                                            ? 'numeric'
+                                            : column.type || 'text'
+                                    "
+                                    [field]="column.field"
+                                    display="menu"
+                                    class="ml-auto"
+                                />
+                            </div>
+                        </th>
+                    }
+                }
+            </tr>
+        </ng-template>
+
+        <ng-container
+            *ngTemplateOutlet="
+                customHeaderTemplate()
+                    ? customHeaderTemplate()!
+                    : defaultHeaderTemplate;
+                context: { $implicit: columns }
+            "
+        ></ng-container>
+    </ng-template>
+    <ng-template #body let-data let-columns="columns">
+        <ng-template #defaultBodyTemplate>
+            <tr>
+                @if (selectionMode()) {
+                    <td>
+                        <p-tableCheckbox [value]="data" />
+                    </td>
+                }
+                @if (enableEdit()) {
+                    <td class="action-cell">
+                        <div class="flex items-center justify-center gap-2">
+                            <p-button
+                                size="small"
+                                icon="pi pi-pen-to-square"
+                                pTooltip="Edit"
+                                tooltipPosition="left"
+                                (click)="onEditAction(data)"
+                            />
+                        </div>
+                    </td>
+                }
+
+                @for (column of columns; track column.field) {
+                    @if (column.field === "FileData") {
+                        <td
+                            class="action-cell"
+                            (click)="
+                                data.AttachmentId === null
+                                    ? ''
+                                    : onOpenImageAction(data)
+                            "
+                        >
+                            <div class="flex items-center justify-center">
+                                @if (data.AttachmentId === null) {
+                                    <img
+                                        [src]="getImageData(data.AttachmentId)"
+                                        alt="assets/img/noImage.png"
+                                        style="width: 30px"
+                                        class="rounded"
+                                    />
+                                } @else if (
+                                    validImageType(
+                                        data.AttachmentFileName?.split(
+                                            "."
+                                        ).pop()
+                                    )
+                                ) {
+                                    <img
+                                        [src]="getImageData(data.AttachmentId)"
+                                        alt="assets/img/noImage.png"
+                                        style="width: 30px"
+                                        class="rounded"
+                                    />
+                                } @else {
+                                    <img
+                                        src="assets/img/noPreview.jpg"
+                                        alt="assets/img/noPreview.jpg"
+                                        style="width: 30px"
+                                    />
+                                }
+                            </div>
+                        </td>
+                    } @else if (column.field === dataKey()) {
+                        <td class="action-cell">
+                            <a href="#" (click)="onDataKeyClick($event, data)">
+                                <div
+                                    class="flex items-center justify-center gap-2"
+                                >
+                                    <p-tag
+                                        [value]="data[column.field]"
+                                        class="hover:underline"
+                                    />
+                                </div>
+                            </a>
+                        </td>
+                    } @else if (column.type === "date") {
+                        <td>
+                            {{
+                                data[column.field]
+                                    ? (data[column.field] + "Z" | date: "short")
+                                    : ""
+                            }}
+                        </td>
+                    } @else {
+                        <td>{{ data[column.field] }}</td>
+                    }
+                }
+            </tr>
+        </ng-template>
+        <ng-container
+            *ngTemplateOutlet="
+                customBodyTemplate()
+                    ? customBodyTemplate()!
+                    : defaultBodyTemplate;
+                context: { $implicit: data }
+            "
+        ></ng-container>
+    </ng-template>
+    <ng-template pTemplate="loadingbody" let-columns>
+        @for (row of [].constructor(10); track $index) {
+            <tr>
+                <td><p-skeleton width="100%"></p-skeleton></td>
+                @for (column of columns; track column) {
+                    <td><p-skeleton width="100%"></p-skeleton></td>
+                }
+                <td><p-skeleton width="100%"></p-skeleton></td>
+            </tr>
+        }
+    </ng-template>
+    <ng-template #emptymessage>
+        <tr>
+            <td colspan="8">{{ tableEmptyMessage() }}</td>
+        </tr>
+    </ng-template>
+    <ng-template #summary> </ng-template>
+</p-table>

@@ -1,0 +1,26 @@
+<div class="flex flex-col gap-2">
+    <label [for]="label()" [class.p-error]="hasError()" class="font-semibold">{{
+        computdLabel()
+    }}</label>
+    <p-inputnumber
+        [mode]="type()"
+        [inputId]="label()"
+        [useGrouping]="group()"
+        [class.ng-invalid]="hasError()"
+        [class.ng-dirty]="hasError()"
+        [formControl]="ngControl.control"
+        [minFractionDigits]="minFractionDigits()"
+        [maxFractionDigits]="maxFractionDigits()"
+        [prefix]="prefix()"
+        [suffix]="suffix()"
+        [currency]="currency()"
+        fluid
+    />
+    @if (hasError()) {
+        <div class="p-error">
+            @for (error of getErrors(); track error) {
+                <small>{{ error }}</small> <br />
+            }
+        </div>
+    }
+</div>
