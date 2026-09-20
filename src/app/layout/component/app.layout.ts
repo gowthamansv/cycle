@@ -4,14 +4,15 @@ import { RouterModule } from '@angular/router';
 import { AppTopbar } from './app.topbar';
 import { AppFooter } from './app.footer';
 import { LayoutService } from '../service/layout.service';
+import { AppSidebar } from './app.sidebar';
 
 @Component({
   selector: 'app-layout',
   standalone: true,
-  imports: [CommonModule, AppTopbar, RouterModule, AppFooter],
+  imports: [CommonModule, AppTopbar, RouterModule, AppFooter, AppSidebar],
   template: `<div class="layout-wrapper" [ngClass]="containerClass()">
     <app-topbar></app-topbar>
-    <!-- <app-sidebar></app-sidebar> -->
+    <app-sidebar></app-sidebar>
     <div class="layout-main-container">
       <div class="layout-main">
         <router-outlet></router-outlet>

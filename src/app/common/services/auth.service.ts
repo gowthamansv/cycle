@@ -7,7 +7,7 @@ import { Observable, of, throwError } from 'rxjs';
 import { catchError, map, tap } from 'rxjs/operators';
 
 export interface AuthUser {
-  username: string;
+  username?: string;
   email: string;
   role: 'admin' | 'staff' | 'customer';
   facility?: string;
@@ -43,50 +43,49 @@ export class AuthService {
    */
   loginAdmin(usernameOrEmail: string, password: string, remember: boolean = false): Observable<AuthResponse> {
     const trimmedInput = usernameOrEmail.trim();
+    console.log('hi 3')
 
     // Check if external API config is available
-    let authUrl: string | undefined;
-    try {
-      authUrl = this.configService.AuthUrl;
-    } catch {
-      authUrl = undefined;
-    }
+    // let authUrl: string | undefined;
+    // try {
+    //   authUrl = this.configService.AuthUrl;
+    //   console.log(authUrl, 'hi 3.1');
+    // } catch {
+    //   authUrl = undefined;
+    // }
 
-    if (authUrl) {
-      const payload = {
-        username: trimmedInput,
-        password: password,
-        portal: 'admin',
-      };
 
-      return this.http.post<any>(`${authUrl}api/auth/admin-login`, payload).pipe(
-        map((response) => {
-          const token = response.token || response.Token || 'admin_jwt_token';
-          const user: AuthUser = {
-            username: response.username || trimmedInput,
-            email: response.email || trimmedInput,
-            role: response.role || 'admin',
-            name: response.name || 'Service Center Administrator',
-          };
+    console.log('hi 4')
+    const payload = {
+      login: trimmedInput,
+      password: password,
+    };
 
-          if (user.role !== 'admin') {
-            throw new Error('ACCESS_DENIED_NOT_ADMIN');
-          }
+    return this.http.post<any>(this.configService.AuthUrl + `api/auth/login`, payload).pipe(
+      map((response) => {
+        const token = response.accessToken || response.accessToken || 'admin_jwt_token';
+        const user: AuthUser = {
+          name: response.firstName || trimmedInput,
+          email: response.email || trimmedInput,
+          role: response.role || 'admin',
+        };
 
-          return { token, user };
-        }),
-        tap(({ token, user }) => this.handleAuthSuccess(token, user, remember)),
-        catchError((error) => {
-          if (error?.message === 'ACCESS_DENIED_NOT_ADMIN') {
-            return throwError(() => new Error('ACCESS_DENIED_NOT_ADMIN'));
-          }
-          // Fallback to local admin credential validation if mock/standalone
-          return this.authenticateLocal(trimmedInput, password, remember);
-        })
-      );
-    } else {
-      return this.authenticateLocal(trimmedInput, password, remember);
-    }
+        // if (user.role !== 'admin') {
+        //   throw new Error('ACCESS_DENIED_NOT_ADMIN');
+        // }
+
+        return { token, user };
+      }),
+      tap(({ token, user }) => this.handleAuthSuccess(token, user, remember)),
+      catchError((error) => {
+        if (error?.message === 'ACCESS_DENIED_NOT_ADMIN') {
+          return throwError(() => new Error('ACCESS_DENIED_NOT_ADMIN'));
+        }
+        // Fallback to local admin credential validation if mock/standalone
+        return this.authenticateLocal(trimmedInput, password, remember);
+      })
+    );
+
   }
 
   /**
