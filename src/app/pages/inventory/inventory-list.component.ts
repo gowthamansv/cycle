@@ -50,6 +50,7 @@ import { InventoryItem } from '../../models/cycle-management.models';
           [value]="filteredInventory"
           [paginator]="true"
           [rows]="10"
+          [rowsPerPageOptions]="[5, 10, 15, 20]"
           [rowHover]="true"
           responsiveLayout="scroll"
           styleClass="p-datatable-sm"

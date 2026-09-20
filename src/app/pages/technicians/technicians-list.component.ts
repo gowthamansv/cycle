@@ -105,6 +105,7 @@ import { Technician, TechnicianAvailability } from '../../models/cycle-managemen
           [value]="filteredTechnicians"
           [paginator]="true"
           [rows]="10"
+          [rowsPerPageOptions]="[5, 10, 15, 20]"
           [rowHover]="true"
           responsiveLayout="scroll"
           styleClass="p-datatable-sm"

@@ -307,14 +307,18 @@ export class AdminLoginComponent implements OnInit {
   ngOnInit(): void {
     this.initForm();
 
-    // If user is already authenticated as admin, redirect to dashboard
-    if (this.authService.isAdmin()) {
-      this.router.navigate(['/dashboard']);
+    // If user is already authenticated, redirect appropriately
+    if (this.authService.isAuthenticated()) {
+      if (this.authService.isAdmin()) {
+        this.router.navigate(['/dashboard']);
+      } else {
+        this.router.navigate(['/services']);
+      }
       return;
     }
 
     // Capture return URL if passed from guard
-    this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/dashboard';
+    this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '';
   }
 
   private initForm(): void {
@@ -334,23 +338,23 @@ export class AdminLoginComponent implements OnInit {
     this.errorMessage = null;
 
     if (this.loginForm.invalid) {
-      console.log('hi');
       this.loginForm.markAllAsTouched();
       return;
     }
-    console.log('hi 1');
+
     this.isLoading = true;
     const { username, password, remember } = this.loginForm.value;
 
     this.authService.loginAdmin(username, password, remember).subscribe({
       next: (response) => {
         this.isLoading = false;
-        console.log('hhi 2')
-        // if (response.user.role === 'admin') {
-        this.router.navigateByUrl(this.returnUrl);
-        // } else {
-        // this.errorMessage = "You don't have permission to access the admin portal.";
-        // }
+        if (response.user.role === 'admin') {
+          const target = this.returnUrl || '/dashboard';
+          this.router.navigateByUrl(target);
+        } else {
+          const target = this.returnUrl && !this.returnUrl.includes('dashboard') ? this.returnUrl : '/services';
+          this.router.navigateByUrl(target);
+        }
       },
       error: (err) => {
         this.isLoading = false;

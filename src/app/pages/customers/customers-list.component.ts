@@ -1,7 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
@@ -13,6 +13,7 @@ import { TooltipModule } from 'primeng/tooltip';
 import { MessageService } from 'primeng/api';
 import { CycleDataService } from '../../services/cycle-data.service';
 import { Customer } from '../../models/cycle-management.models';
+import { AuthService } from '../../common/services/auth.service';
 
 @Component({
   selector: 'app-customers-list',
@@ -34,7 +35,78 @@ import { Customer } from '../../models/cycle-management.models';
   template: `
     <p-toast></p-toast>
 
-    <div class="flex flex-col gap-6">
+    <!-- ============================================================= -->
+    <!-- USER ROLE: DIRECT CREATE CUSTOMER INTERFACE                   -->
+    <!-- ============================================================= -->
+    <div *ngIf="!authService.isAdmin()" class="max-w-2xl mx-auto flex flex-col gap-6 animate-fade-in">
+      <!-- Header -->
+      <div class="bg-surface-0 dark:bg-surface-900 p-6 rounded-xl border border-surface-200 dark:border-surface-700 shadow-sm flex items-center justify-between">
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-2xl font-bold text-surface-900 dark:text-surface-0 tracking-tight">Create Customer</h1>
+            <span class="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-orange-100 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300">
+              Rider Registration
+            </span>
+          </div>
+          <p class="text-sm text-muted-color mt-1">Register a new rider profile into the workshop directory.</p>
+        </div>
+      </div>
+
+      <!-- Create Customer Form Card -->
+      <div class="card p-6 md:p-8 shadow-sm border border-surface-200 dark:border-surface-700 space-y-5">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-muted-color uppercase mb-1.5">First Name *</label>
+            <input pInputText [(ngModel)]="userCustomerForm.firstName" placeholder="e.g. Alex" class="w-full" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-muted-color uppercase mb-1.5">Last Name *</label>
+            <input pInputText [(ngModel)]="userCustomerForm.lastName" placeholder="e.g. Morgan" class="w-full" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-muted-color uppercase mb-1.5">Email Address *</label>
+            <input pInputText type="email" [(ngModel)]="userCustomerForm.email" placeholder="alex.morgan@example.com" class="w-full" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-muted-color uppercase mb-1.5">Phone Number *</label>
+            <input pInputText [(ngModel)]="userCustomerForm.phone" placeholder="+1 (555) 234-5678" class="w-full" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-muted-color uppercase mb-1.5">Address / City</label>
+          <input pInputText [(ngModel)]="userCustomerForm.address" placeholder="742 Evergreen Terrace, Sector 4" class="w-full" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-muted-color uppercase mb-1.5">Company / Club (Optional)</label>
+          <input pInputText [(ngModel)]="userCustomerForm.companyName" placeholder="e.g. Trail Blazers Cycling Club" class="w-full" />
+        </div>
+
+        <!-- Form Actions -->
+        <div class="flex items-center justify-end gap-3 pt-4 border-t border-surface-200 dark:border-surface-700">
+          <p-button 
+            label="Cancel" 
+            severity="secondary" 
+            [outlined]="true" 
+            (click)="cancelUserCreate()"
+          ></p-button>
+          <p-button 
+            label="Create Customer" 
+            icon="pi pi-check" 
+            (click)="saveUserCustomer()"
+          ></p-button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================= -->
+    <!-- ADMIN ROLE: FULL CUSTOMER MANAGEMENT TABLE & MODAL           -->
+    <!-- ============================================================= -->
+    <div *ngIf="authService.isAdmin()" class="flex flex-col gap-6 animate-fade-in">
       <!-- Header -->
       <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-surface-0 dark:bg-surface-900 p-6 rounded-xl border border-surface-200 dark:border-surface-700 shadow-sm">
         <div>
@@ -97,26 +169,26 @@ import { Customer } from '../../models/cycle-management.models';
         </div>
       </div>
 
-      <!-- Customers DataTable -->
+      <!-- Customers DataTable with distinct column visual hierarchy -->
       <div class="card p-0 shadow-sm border border-surface-200 dark:border-surface-700 overflow-hidden">
         <p-table
           [value]="filteredCustomers"
           [paginator]="true"
           [rows]="10"
-          [rowsPerPageOptions]="[10, 20, 50]"
+          [rowsPerPageOptions]="[5, 10, 15, 20]"
           [rowHover]="true"
           responsiveLayout="scroll"
           styleClass="p-datatable-sm"
         >
           <ng-template #header>
             <tr>
-              <th pSortableColumn="name" style="min-width: 12rem">Customer Name <p-sortIcon field="name"></p-sortIcon></th>
-              <th style="min-width: 9rem">Phone</th>
+              <th pSortableColumn="name" style="min-width: 13rem">Customer Name <p-sortIcon field="name"></p-sortIcon></th>
+              <th style="min-width: 10rem">Phone</th>
               <th style="min-width: 12rem">Email</th>
               <th pSortableColumn="bicyclesCount" style="min-width: 8rem" class="text-center">Bicycles <p-sortIcon field="bicyclesCount"></p-sortIcon></th>
-              <th pSortableColumn="activeServicesCount" style="min-width: 8rem" class="text-center">Active Services <p-sortIcon field="activeServicesCount"></p-sortIcon></th>
-              <th pSortableColumn="lastServiceDate" style="min-width: 8.5rem">Last Service <p-sortIcon field="lastServiceDate"></p-sortIcon></th>
-              <th pSortableColumn="status" style="min-width: 7rem">Status <p-sortIcon field="status"></p-sortIcon></th>
+              <th pSortableColumn="activeServicesCount" style="min-width: 9rem" class="text-center">Active Services <p-sortIcon field="activeServicesCount"></p-sortIcon></th>
+              <th pSortableColumn="lastServiceDate" style="min-width: 9rem">Last Service <p-sortIcon field="lastServiceDate"></p-sortIcon></th>
+              <th pSortableColumn="status" style="min-width: 8rem">Status <p-sortIcon field="status"></p-sortIcon></th>
               <th style="min-width: 8rem" class="text-center">Actions</th>
             </tr>
           </ng-template>
@@ -125,17 +197,17 @@ import { Customer } from '../../models/cycle-management.models';
             <tr>
               <td>
                 <div class="font-bold text-surface-900 dark:text-surface-0 text-sm flex items-center gap-2">
-                  <a [routerLink]="['/customers', customer.id]" class="hover:text-primary hover:underline">
+                  <a [routerLink]="['/customers', customer.id]" class="hover:text-primary hover:underline font-semibold">
                     {{ customer.name }}
                   </a>
                   <span *ngIf="customer.companyName" class="text-[10px] px-1.5 py-0.5 rounded bg-surface-100 dark:bg-surface-800 text-muted-color">
                     {{ customer.companyName }}
                   </span>
                 </div>
-                <div class="text-[11px] text-muted-color">ID: {{ customer.id }}</div>
+                <div class="text-[11px] text-muted-color font-mono">ID: {{ customer.id }}</div>
               </td>
               <td>
-                <span class="font-mono text-xs text-surface-800 dark:text-surface-200">{{ customer.phone }}</span>
+                <span class="font-mono text-xs text-surface-800 dark:text-surface-200 font-medium">{{ customer.phone }}</span>
               </td>
               <td>
                 <span class="text-xs text-surface-700 dark:text-surface-300">{{ customer.email }}</span>
@@ -181,7 +253,7 @@ import { Customer } from '../../models/cycle-management.models';
                     [text]="true"
                     severity="primary"
                     size="small"
-                    pTooltip="New Service for Customer"
+                    pTooltip="New Service"
                     routerLink="/services/new"
                   ></p-button>
                 </div>
@@ -201,7 +273,7 @@ import { Customer } from '../../models/cycle-management.models';
       </div>
     </div>
 
-    <!-- Quick New Customer Modal -->
+    <!-- Quick New Customer Modal (Admin Only) -->
     <p-dialog
       [(visible)]="newCustomerDialogVisible"
       header="Register New Customer"
@@ -252,11 +324,24 @@ import { Customer } from '../../models/cycle-management.models';
 })
 export class CustomersListComponent implements OnInit {
   protected dataService = inject(CycleDataService);
+  protected authService = inject(AuthService);
   private messageService = inject(MessageService);
+  private router = inject(Router);
 
   searchQuery = '';
   selectedStatus: string | null = null;
 
+  // Direct Form Model for Standard User Role
+  userCustomerForm = {
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    address: '',
+    companyName: ''
+  };
+
+  // Admin Modal Model
   newCustomerDialogVisible = false;
   newCustomer = {
     name: '',
@@ -288,6 +373,49 @@ export class CustomersListComponent implements OnInit {
     });
   }
 
+  // User Action Handlers
+  saveUserCustomer(): void {
+    if (!this.userCustomerForm.firstName.trim() || !this.userCustomerForm.phone.trim() || !this.userCustomerForm.email.trim()) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Missing Fields',
+        detail: 'First Name, Phone, and Email are required.'
+      });
+      return;
+    }
+
+    const fullName = `${this.userCustomerForm.firstName.trim()} ${this.userCustomerForm.lastName.trim()}`.trim();
+    const created = this.dataService.addCustomer({
+      name: fullName,
+      phone: this.userCustomerForm.phone.trim(),
+      email: this.userCustomerForm.email.trim(),
+      address: this.userCustomerForm.address.trim(),
+      companyName: this.userCustomerForm.companyName.trim(),
+      status: 'Active'
+    });
+
+    this.messageService.add({
+      severity: 'success',
+      summary: 'Customer Created',
+      detail: `Rider ${created.name} registered successfully.`
+    });
+
+    // Reset user form
+    this.userCustomerForm = {
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      address: '',
+      companyName: ''
+    };
+  }
+
+  cancelUserCreate(): void {
+    this.router.navigate(['/services']);
+  }
+
+  // Admin Action Handlers
   openNewCustomerModal(): void {
     this.newCustomer = {
       name: '',

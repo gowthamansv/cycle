@@ -40,6 +40,9 @@ import { ServiceJob, TicketStatus } from '../../models/cycle-management.models';
 
       <p-table
         [value]="dataService.serviceJobs()"
+        [paginator]="true"
+        [rows]="5"
+        [rowsPerPageOptions]="[5, 10, 15, 20]"
         [rowHover]="true"
         [responsiveLayout]="'stack'"
         breakpoint="768px"

@@ -16,6 +16,7 @@ import { DrawerModule } from 'primeng/drawer';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { CycleDataService } from '../../services/cycle-data.service';
 import { ServiceTicket, TicketStatus, TicketPriority } from '../../models/cycle-management.models';
+import { AuthService } from '../../common/services/auth.service';
 
 @Component({
   selector: 'app-services-list',
@@ -121,7 +122,7 @@ import { ServiceTicket, TicketStatus, TicketPriority } from '../../models/cycle-
           [value]="filteredTickets"
           [paginator]="true"
           [rows]="10"
-          [rowsPerPageOptions]="[10, 20, 50]"
+          [rowsPerPageOptions]="[5, 10, 15, 20]"
           [rowHover]="true"
           [showCurrentPageReport]="true"
           currentPageReportTemplate="Showing {first} to {last} of {totalRecords} services"
@@ -142,7 +143,7 @@ import { ServiceTicket, TicketStatus, TicketPriority } from '../../models/cycle-
               <th style="min-width: 9rem">Email</th>
               <th style="min-width: 13rem">Description</th>
               <th pSortableColumn="createdAt" style="min-width: 8rem">Created At <p-sortIcon field="createdAt"></p-sortIcon></th>
-              <th style="min-width: 5rem" class="text-center">Active</th>
+              <th *ngIf="authService.isAdmin()" style="min-width: 5rem" class="text-center">Active</th>
               <th style="min-width: 7rem" class="text-center">Actions</th>
             </tr>
           </ng-template>
@@ -203,9 +204,9 @@ import { ServiceTicket, TicketStatus, TicketPriority } from '../../models/cycle-
                 </p>
               </td>
               <td>
-                <span class="text-xs text-muted-color">{{ ticket.createdAt }}</span>
+                <span class="text-xs text-muted-color font-mono">{{ ticket.createdAt }}</span>
               </td>
-              <td class="text-center">
+              <td *ngIf="authService.isAdmin()" class="text-center">
                 <p-toggleswitch
                   [(ngModel)]="ticket.enabled"
                   (onChange)="confirmToggleEnabled(ticket)"
@@ -234,6 +235,7 @@ import { ServiceTicket, TicketStatus, TicketPriority } from '../../models/cycle-
                     (click)="openEditDialog(ticket)"
                   ></p-button>
                   <p-button
+                    *ngIf="authService.isAdmin()"
                     icon="pi pi-trash"
                     [rounded]="true"
                     [text]="true"
@@ -379,6 +381,7 @@ import { ServiceTicket, TicketStatus, TicketPriority } from '../../models/cycle-
 })
 export class ServicesListComponent implements OnInit {
   protected dataService = inject(CycleDataService);
+  protected authService = inject(AuthService);
   private confirmationService = inject(ConfirmationService);
   private messageService = inject(MessageService);
 

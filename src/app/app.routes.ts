@@ -21,6 +21,7 @@ import { Landing } from './pages/landing/landing';
 import { AdminLoginComponent } from './pages/auth/admin-login.component';
 import { NotFoundComponent } from './pages/notfound/notfound';
 import { adminGuard } from './common/guards/admin.guard';
+import { authGuard } from './common/guards/auth.guard';
 
 // Existing UI Kit Demos for reference
 import { MenuDemo } from './pages/uikit/menudemo';
@@ -68,54 +69,54 @@ export const routes: Routes = [
   { path: 'auth/access', component: Access, title: 'Access Denied' },
   { path: 'auth/error', component: Error, title: 'System Error' },
 
-  // Admin & Bicycle Service Management Routes (Protected by AdminGuard)
+  // Bicycle Service Management Routes (Base Protected by AuthGuard)
   {
     path: '',
     component: AppLayout,
-    canActivate: [adminGuard],
+    canActivate: [authGuard],
     children: [
-      // Primary Operational Dashboard
-      { path: '', component: ServiceDashboardComponent, title: 'Dashboard | Cycle Service Center' },
-      { path: 'admin', component: ServiceDashboardComponent, title: 'Admin Workspace | Cycle Service Center' },
-      { path: 'dashboard', component: ServiceDashboardComponent, title: 'Dashboard | Cycle Service Center' },
+      // Primary Operational Dashboard (Admin Only)
+      { path: '', component: ServiceDashboardComponent, canActivate: [adminGuard], title: 'Dashboard | Cycle Service Center' },
+      { path: 'admin', component: ServiceDashboardComponent, canActivate: [adminGuard], title: 'Admin Workspace | Cycle Service Center' },
+      { path: 'dashboard', component: ServiceDashboardComponent, canActivate: [adminGuard], title: 'Dashboard | Cycle Service Center' },
 
-      // Services (Tickets)
+      // Services (Accessible to both Admin and User)
       { path: 'services', component: ServicesListComponent, title: 'Services | Cycle Service Center' },
       { path: 'services/new', component: ServiceFormComponent, title: 'Create Service | Cycle Service Center' },
 
-      // Appointments
-      { path: 'appointments', component: AppointmentsListComponent, title: 'Appointments | Cycle Service Center' },
-      { path: 'appointments/new', component: AppointmentFormComponent, title: 'New Appointment | Cycle Service Center' },
+      // Appointments (Admin Only)
+      { path: 'appointments', component: AppointmentsListComponent, canActivate: [adminGuard], title: 'Appointments | Cycle Service Center' },
+      { path: 'appointments/new', component: AppointmentFormComponent, canActivate: [adminGuard], title: 'New Appointment | Cycle Service Center' },
 
-      // Service Jobs
-      { path: 'service-jobs', component: ServiceJobsListComponent, title: 'Service Jobs | Cycle Service Center' },
+      // Service Jobs (Admin Only)
+      { path: 'service-jobs', component: ServiceJobsListComponent, canActivate: [adminGuard], title: 'Service Jobs | Cycle Service Center' },
 
-      // Customers
+      // Customers (Accessible to both - User sees direct create interface)
       { path: 'customers', component: CustomersListComponent, title: 'Customers | Cycle Service Center' },
-      { path: 'customers/:id', component: CustomerDetailComponent, title: 'Customer Profile | Cycle Service Center' },
+      { path: 'customers/:id', component: CustomerDetailComponent, canActivate: [adminGuard], title: 'Customer Profile | Cycle Service Center' },
 
-      // Bicycles
+      // Bicycles (Accessible to both - User sees direct create interface)
       { path: 'bicycles', component: BicyclesListComponent, title: 'Bicycle Fleet | Cycle Service Center' },
-      { path: 'bicycles/:id', component: BicycleDetailComponent, title: 'Bicycle Profile | Cycle Service Center' },
+      { path: 'bicycles/:id', component: BicycleDetailComponent, canActivate: [adminGuard], title: 'Bicycle Profile | Cycle Service Center' },
 
-      // Technicians
-      { path: 'technicians', component: TechniciansListComponent, title: 'Technicians | Cycle Service Center' },
-      { path: 'technicians/:id', component: TechnicianDetailComponent, title: 'Technician Profile | Cycle Service Center' },
+      // Technicians (Admin Only)
+      { path: 'technicians', component: TechniciansListComponent, canActivate: [adminGuard], title: 'Technicians | Cycle Service Center' },
+      { path: 'technicians/:id', component: TechnicianDetailComponent, canActivate: [adminGuard], title: 'Technician Profile | Cycle Service Center' },
 
-      // Workshop & Finance
-      { path: 'inventory', component: InventoryListComponent, title: 'Inventory | Cycle Service Center' },
-      { path: 'payments', component: PaymentsListComponent, title: 'Payments | Cycle Service Center' },
-      { path: 'reports', component: ReportsDashboardComponent, title: 'Reports | Cycle Service Center' },
+      // Workshop & Finance (Admin Only)
+      { path: 'inventory', component: InventoryListComponent, canActivate: [adminGuard], title: 'Inventory | Cycle Service Center' },
+      { path: 'payments', component: PaymentsListComponent, canActivate: [adminGuard], title: 'Payments | Cycle Service Center' },
+      { path: 'reports', component: ReportsDashboardComponent, canActivate: [adminGuard], title: 'Reports | Cycle Service Center' },
 
-      // Settings
+      // Settings (Role-aware for both Admin and User)
       { path: 'settings', component: WorkshopSettingsComponent, title: 'Settings | Cycle Service Center' },
 
-      // Template & UIKit Demo Pages
-      { path: 'documentation', component: Documentation },
-      { path: 'crud', component: Crud },
-      { path: 'empty', component: Empty },
-      { path: 'pages/crud', component: Crud },
-      { path: 'pages/empty', component: Empty },
+      // Template & UIKit Demo Pages (Admin Only)
+      { path: 'documentation', component: Documentation, canActivate: [adminGuard] },
+      { path: 'crud', component: Crud, canActivate: [adminGuard] },
+      { path: 'empty', component: Empty, canActivate: [adminGuard] },
+      { path: 'pages/crud', component: Crud, canActivate: [adminGuard] },
+      { path: 'pages/empty', component: Empty, canActivate: [adminGuard] },
       { path: 'pages/notfound', component: NotFoundComponent },
 
       // UI Kit Demos

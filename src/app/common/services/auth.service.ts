@@ -6,10 +6,12 @@ import { AppConfigService } from '../../app.config.service';
 import { Observable, of, throwError } from 'rxjs';
 import { catchError, map, tap } from 'rxjs/operators';
 
+export type UserRole = 'admin' | 'user' | 'staff' | 'customer';
+
 export interface AuthUser {
   username?: string;
   email: string;
-  role: 'admin' | 'staff' | 'customer';
+  role: UserRole;
   facility?: string;
   name?: string;
 }
@@ -36,76 +38,101 @@ export class AuthService {
   currentUser = signal<AuthUser | null>(this.loadStoredUser());
 
   isAuthenticated = computed(() => !!this.token());
-  isAdmin = computed(() => this.isAuthenticated() && (this.userRole() === 'admin' || this.currentUser()?.role === 'admin'));
+  isAdmin = computed(() => {
+    if (!this.isAuthenticated()) return false;
+    const role = (this.userRole() || this.currentUser()?.role || '').toLowerCase();
+    return role === 'admin';
+  });
+  isUser = computed(() => {
+    if (!this.isAuthenticated()) return false;
+    return !this.isAdmin();
+  });
+
+  getRole(): 'admin' | 'user' {
+    return this.isAdmin() ? 'admin' : 'user';
+  }
 
   /**
-   * Authenticate admin user
+   * Authenticate user (admin or user role)
    */
   loginAdmin(usernameOrEmail: string, password: string, remember: boolean = false): Observable<AuthResponse> {
     const trimmedInput = usernameOrEmail.trim();
-    console.log('hi 3')
 
-    // Check if external API config is available
-    // let authUrl: string | undefined;
-    // try {
-    //   authUrl = this.configService.AuthUrl;
-    //   console.log(authUrl, 'hi 3.1');
-    // } catch {
-    //   authUrl = undefined;
-    // }
-
-
-    console.log('hi 4')
     const payload = {
       login: trimmedInput,
       password: password,
     };
 
-    return this.http.post<any>(this.configService.AuthUrl + `api/auth/login`, payload).pipe(
-      map((response) => {
-        const token = response.accessToken || response.accessToken || 'admin_jwt_token';
-        const user: AuthUser = {
-          name: response.firstName || trimmedInput,
-          email: response.email || trimmedInput,
-          role: response.role || 'admin',
-        };
+    let authBaseUrl = '';
+    try {
+      authBaseUrl = this.configService.AuthUrl || '';
+    } catch {
+      authBaseUrl = '';
+    }
 
-        // if (user.role !== 'admin') {
-        //   throw new Error('ACCESS_DENIED_NOT_ADMIN');
-        // }
+    if (authBaseUrl) {
+      return this.http.post<any>(authBaseUrl + `api/auth/login`, payload).pipe(
+        map((response) => {
+          const token = response.accessToken || response.token || 'auth_jwt_token';
+          const rawRole = (response.role || response.user?.role || response.Role || response.userType || 'admin').toLowerCase();
+          const role: UserRole = rawRole === 'admin' ? 'admin' : 'user';
+          
+          const user: AuthUser = {
+            name: response.firstName || response.name || response.user?.name || (role === 'admin' ? 'Cycle Center Administrator' : 'Service Staff User'),
+            email: response.email || response.user?.email || trimmedInput,
+            role: role,
+            facility: response.facility || 'Main Service Hub #01',
+          };
 
-        return { token, user };
-      }),
-      tap(({ token, user }) => this.handleAuthSuccess(token, user, remember)),
-      catchError((error) => {
-        if (error?.message === 'ACCESS_DENIED_NOT_ADMIN') {
-          return throwError(() => new Error('ACCESS_DENIED_NOT_ADMIN'));
-        }
-        // Fallback to local admin credential validation if mock/standalone
-        return this.authenticateLocal(trimmedInput, password, remember);
-      })
-    );
+          return { token, user };
+        }),
+        tap(({ token, user }) => this.handleAuthSuccess(token, user, remember)),
+        catchError(() => {
+          // Fallback to local credential validation if API is unavailable/offline
+          return this.authenticateLocal(trimmedInput, password, remember);
+        })
+      );
+    }
 
+    // Direct local authentication fallback
+    return this.authenticateLocal(trimmedInput, password, remember);
   }
 
   /**
-   * Local authentication handler (works seamlessly when offline or in standalone frontend environment)
+   * Local authentication handler (works seamlessly offline or in standalone frontend environment)
    */
   private authenticateLocal(usernameOrEmail: string, password: string, remember: boolean): Observable<AuthResponse> {
     const lowerInput = usernameOrEmail.toLowerCase();
 
-    // Support standard admin identifiers
-    const isAdmin =
+    // Admin Credentials
+    const isAdminUser =
       (lowerInput === 'admin' || lowerInput === 'admin@cycleservice.com' || lowerInput === 'manager' || lowerInput.includes('admin')) &&
       password.length >= 4;
 
-    if (isAdmin) {
+    // Standard User Credentials
+    const isStandardUser =
+      (lowerInput === 'user' || lowerInput === 'user@cycleservice.com' || lowerInput === 'staff' || lowerInput.includes('user') || lowerInput.includes('staff') || !lowerInput.includes('admin')) &&
+      password.length >= 4;
+
+    if (isAdminUser) {
       const token = `csc_jwt_token_${Date.now()}_admin`;
       const user: AuthUser = {
         username: usernameOrEmail,
         email: usernameOrEmail.includes('@') ? usernameOrEmail : `${usernameOrEmail}@cycleservice.com`,
         role: 'admin',
         name: 'Cycle Center Administrator',
+        facility: 'Main Service Hub #01',
+      };
+
+      this.handleAuthSuccess(token, user, remember);
+      return of({ token, user });
+    } else if (isStandardUser) {
+      const token = `csc_jwt_token_${Date.now()}_user`;
+      const user: AuthUser = {
+        username: usernameOrEmail,
+        email: usernameOrEmail.includes('@') ? usernameOrEmail : `${usernameOrEmail}@cycleservice.com`,
+        role: 'user',
+        name: 'Service Staff User',
         facility: 'Main Service Hub #01',
       };
 

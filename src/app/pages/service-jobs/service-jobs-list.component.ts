@@ -146,7 +146,7 @@ import { ServiceJob, TicketStatus } from '../../models/cycle-management.models';
           [value]="filteredJobs"
           [paginator]="true"
           [rows]="10"
-          [rowsPerPageOptions]="[10, 20, 50]"
+          [rowsPerPageOptions]="[5, 10, 15, 20]"
           [rowHover]="true"
           responsiveLayout="scroll"
           styleClass="p-datatable-sm"

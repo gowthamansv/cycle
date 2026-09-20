@@ -130,7 +130,7 @@ import { Appointment, AppointmentStatus } from '../../models/cycle-management.mo
           [value]="filteredAppointments"
           [paginator]="true"
           [rows]="10"
-          [rowsPerPageOptions]="[10, 20, 50]"
+          [rowsPerPageOptions]="[5, 10, 15, 20]"
           [rowHover]="true"
           responsiveLayout="scroll"
           styleClass="p-datatable-sm"

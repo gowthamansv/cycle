@@ -46,6 +46,7 @@ import { PaymentRecord } from '../../models/cycle-management.models';
           [value]="dataService.payments()"
           [paginator]="true"
           [rows]="10"
+          [rowsPerPageOptions]="[5, 10, 15, 20]"
           [rowHover]="true"
           responsiveLayout="scroll"
           styleClass="p-datatable-sm"
