@@ -1,4 +1,3 @@
-export * from './column-picklist/column-picklist.component';
 export * from './common-loading/loading.component';
 export * from './confirmation-dialog/confirmation-dialog.component';
 export * from './custom-table/custom-table.component';

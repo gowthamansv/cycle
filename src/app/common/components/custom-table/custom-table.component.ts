@@ -16,7 +16,7 @@ import { MenuItem } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 import { DragDropModule } from 'primeng/dragdrop';
-import { DialogService, DynamicDialogRef } from 'primeng/dynamicdialog';
+import { DialogModule } from 'primeng/dialog';
 import { FileUpload } from 'primeng/fileupload';
 import { IconFieldModule } from 'primeng/iconfield';
 import { InputIconModule } from 'primeng/inputicon';
@@ -30,7 +30,6 @@ import { Table, TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
 import { ToolbarModule } from 'primeng/toolbar';
 import { TooltipModule } from 'primeng/tooltip';
-import { ColumnPicklistComponent } from '../column-picklist/column-picklist.component';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { tableOptions } from '../../constant/tableOptions';
 import { acceptedImageTypes } from '../../constant/imageExtention';
@@ -53,6 +52,7 @@ import { acceptedImageTypes } from '../../constant/imageExtention';
     CommonModule,
     DragDropModule,
     MultiSelectModule,
+    DialogModule,
     DatePipe,
     FileUpload,
     TagModule,
@@ -61,7 +61,6 @@ import { acceptedImageTypes } from '../../constant/imageExtention';
   ],
   templateUrl: './custom-table.component.html',
   styleUrl: './custom-table.component.scss',
-  providers: [DialogService],
 })
 export class CustomTableComponent {
   private translate = inject(TranslateService);
@@ -119,8 +118,7 @@ export class CustomTableComponent {
   validImageType(params: string) {
     return acceptedImageTypes.includes(params);
   }
-  ref: DynamicDialogRef | null | undefined;
-  private dialogService = inject(DialogService);
+  displayColumnSettings = signal(false);
 
   globalFilter(event: Event) {
     const eventValue = (event.target as HTMLInputElement).value;
@@ -153,18 +151,7 @@ export class CustomTableComponent {
   );
 
   showColumnsSettingsDialog() {
-    const headertext = this.translate.instant('Column Settings');
-    this.ref = this.dialogService.open(ColumnPicklistComponent, {
-      inputValues: {
-        selectedColumns: this.visibleColumns(),
-        unSelectedColumns: this.invisibleColumns(),
-      },
-      header: headertext,
-      closable: true,
-      modal: true,
-      style: { maxHeight: '40rem' },
-    });
-    this.ref?.onClose.subscribe((data) => {});
+    this.displayColumnSettings.set(true);
   }
 
   onEditAction(data: any) {

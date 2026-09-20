@@ -1,6 +1,10 @@
 import { Routes } from '@angular/router';
 import { AppLayout } from './layout/component/app.layout';
 import { Dashboard } from './pages/dashboard/dashboard';
+import { Landing } from './pages/landing/landing';
+import { AdminLoginComponent } from './pages/auth/admin-login.component';
+import { NotFoundComponent } from './pages/notfound/notfound';
+import { adminGuard } from './common/guards/admin.guard';
 import { MenuDemo } from './pages/uikit/menudemo';
 import { TreeDemo } from './pages/uikit/treedemo';
 import { OverlayDemo } from './pages/uikit/overlaydemo';
@@ -16,30 +20,95 @@ import { FormLayoutDemo } from './pages/uikit/formlayoutdemo';
 import { FileDemo } from './pages/uikit/filedemo';
 import { ButtonDemo } from './pages/uikit/buttondemo';
 import { ChartDemo } from './pages/uikit/chartdemo';
+import { Documentation } from './pages/documentation/documentation';
+import { Crud } from './pages/crud/crud';
+import { Empty } from './pages/empty/empty';
+import { Login } from './pages/auth/login';
+import { Access } from './pages/auth/access';
+import { Error } from './pages/auth/error';
 
 export const routes: Routes = [
+  // Dedicated Admin Authentication Route
+  { 
+    path: 'admin/login', 
+    component: AdminLoginComponent, 
+    title: 'Admin Portal Login | Cycle Service Center' 
+  },
+
+  // Public Landing & Customer Entry Routes
+  { 
+    path: 'landing', 
+    component: Landing, 
+    title: 'Cycle Service Center • Premium Workshop & Maintenance' 
+  },
+  { 
+    path: 'login', 
+    component: Login, 
+    title: 'Customer Login | Cycle Service Center' 
+  },
+  { path: 'auth/login', component: AdminLoginComponent },
+  { path: 'auth/access', component: Access, title: 'Access Denied' },
+  { path: 'auth/error', component: Error, title: 'System Error' },
+
+  // Admin & Dashboard Core Routes (Protected by AdminGuard)
   {
     path: '',
     component: AppLayout,
+    canActivate: [adminGuard],
+    children: [
+      { path: '', component: Dashboard, title: 'Dashboard | Cycle Service Center' },
+      { path: 'admin', component: Dashboard, title: 'Admin Workspace | Cycle Service Center' },
+      { path: 'dashboard', component: Dashboard, title: 'Dashboard | Cycle Service Center' },
+      { path: 'documentation', component: Documentation },
+      { path: 'crud', component: Crud },
+      { path: 'empty', component: Empty },
+      { path: 'pages/crud', component: Crud },
+      { path: 'pages/empty', component: Empty },
+      { path: 'pages/notfound', component: NotFoundComponent },
+
+      // UI Kit Demos
+      { path: 'button', data: { breadcrumb: 'Button' }, component: ButtonDemo },
+      { path: 'charts', data: { breadcrumb: 'Charts' }, component: ChartDemo },
+      { path: 'file', data: { breadcrumb: 'File' }, component: FileDemo },
+      { path: 'formlayout', data: { breadcrumb: 'Form Layout' }, component: FormLayoutDemo },
+      { path: 'input', data: { breadcrumb: 'Input' }, component: InputDemo },
+      { path: 'list', data: { breadcrumb: 'List' }, component: ListDemo },
+      { path: 'media', data: { breadcrumb: 'Media' }, component: MediaDemo },
+      { path: 'message', data: { breadcrumb: 'Message' }, component: MessagesDemo },
+      { path: 'misc', data: { breadcrumb: 'Misc' }, component: MiscDemo },
+      { path: 'panel', data: { breadcrumb: 'Panel' }, component: PanelsDemo },
+      { path: 'timeline', data: { breadcrumb: 'Timeline' }, component: TimelineDemo },
+      { path: 'table', data: { breadcrumb: 'Table' }, component: TableDemo },
+      { path: 'overlay', data: { breadcrumb: 'Overlay' }, component: OverlayDemo },
+      { path: 'tree', data: { breadcrumb: 'Tree' }, component: TreeDemo },
+      { path: 'menu', data: { breadcrumb: 'Menu' }, component: MenuDemo },
+      { path: 'uikit/button', component: ButtonDemo },
+      { path: 'uikit/charts', component: ChartDemo },
+      { path: 'uikit/file', component: FileDemo },
+      { path: 'uikit/formlayout', component: FormLayoutDemo },
+      { path: 'uikit/input', component: InputDemo },
+      { path: 'uikit/list', component: ListDemo },
+      { path: 'uikit/media', component: MediaDemo },
+      { path: 'uikit/message', component: MessagesDemo },
+      { path: 'uikit/misc', component: MiscDemo },
+      { path: 'uikit/panel', component: PanelsDemo },
+      { path: 'uikit/timeline', component: TimelineDemo },
+      { path: 'uikit/table', component: TableDemo },
+      { path: 'uikit/overlay', component: OverlayDemo },
+      { path: 'uikit/tree', component: TreeDemo },
+      { path: 'uikit/menu', component: MenuDemo },
+    ],
   },
-  {
-    path: 'dashboard',
-    component: Dashboard,
+
+  // 404 Not Found Handling
+  { 
+    path: 'notfound', 
+    component: NotFoundComponent, 
+    title: '404 - Page Not Found | Cycle Service Center' 
   },
-  { path: 'button', data: { breadcrumb: 'Button' }, component: ButtonDemo },
-  { path: 'charts', data: { breadcrumb: 'Charts' }, component: ChartDemo },
-  { path: 'file', data: { breadcrumb: 'File' }, component: FileDemo },
-  { path: 'formlayout', data: { breadcrumb: 'Form Layout' }, component: FormLayoutDemo },
-  { path: 'input', data: { breadcrumb: 'Input' }, component: InputDemo },
-  { path: 'list', data: { breadcrumb: 'List' }, component: ListDemo },
-  { path: 'media', data: { breadcrumb: 'Media' }, component: MediaDemo },
-  { path: 'message', data: { breadcrumb: 'Message' }, component: MessagesDemo },
-  { path: 'misc', data: { breadcrumb: 'Misc' }, component: MiscDemo },
-  { path: 'panel', data: { breadcrumb: 'Panel' }, component: PanelsDemo },
-  { path: 'timeline', data: { breadcrumb: 'Timeline' }, component: TimelineDemo },
-  { path: 'table', data: { breadcrumb: 'Table' }, component: TableDemo },
-  { path: 'overlay', data: { breadcrumb: 'Overlay' }, component: OverlayDemo },
-  { path: 'tree', data: { breadcrumb: 'Tree' }, component: TreeDemo },
-  { path: 'menu', data: { breadcrumb: 'Menu' }, component: MenuDemo },
-  { path: '**', redirectTo: '/notfound' },
+  { 
+    path: '**', 
+    component: NotFoundComponent, 
+    title: '404 - Page Not Found | Cycle Service Center' 
+  },
 ];
