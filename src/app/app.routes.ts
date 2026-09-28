@@ -48,22 +48,22 @@ import { Error } from './pages/auth/error';
 
 export const routes: Routes = [
   // Dedicated Admin Authentication Route
-  { 
-    path: 'admin/login', 
-    component: AdminLoginComponent, 
-    title: 'Admin Portal Login | Cycle Service Center' 
+  {
+    path: 'admin/login',
+    component: AdminLoginComponent,
+    title: 'Admin Portal Login | Cycle Service Center'
   },
 
   // Public Landing & Customer Entry Routes
-  { 
-    path: 'landing', 
-    component: Landing, 
-    title: 'Cycle Service Center • Premium Workshop & Maintenance' 
+  {
+    path: 'landing',
+    component: Landing,
+    title: 'Cycle Service Center • Premium Workshop & Maintenance'
   },
-  { 
-    path: 'login', 
-    component: Login, 
-    title: 'Customer Login | Cycle Service Center' 
+  {
+    path: 'login',
+    component: Login,
+    title: 'Customer Login | Cycle Service Center'
   },
   { path: 'auth/login', component: AdminLoginComponent },
   { path: 'auth/access', component: Access, title: 'Access Denied' },
@@ -104,9 +104,9 @@ export const routes: Routes = [
       { path: 'technicians/:id', component: TechnicianDetailComponent, canActivate: [adminGuard], title: 'Technician Profile | Cycle Service Center' },
 
       // Workshop & Finance (Admin Only)
-      { path: 'inventory', component: InventoryListComponent, canActivate: [adminGuard], title: 'Inventory | Cycle Service Center' },
-      { path: 'payments', component: PaymentsListComponent, canActivate: [adminGuard], title: 'Payments | Cycle Service Center' },
-      { path: 'reports', component: ReportsDashboardComponent, canActivate: [adminGuard], title: 'Reports | Cycle Service Center' },
+      // { path: 'inventory', component: InventoryListComponent, canActivate: [adminGuard], title: 'Inventory | Cycle Service Center' },
+      // { path: 'payments', component: PaymentsListComponent, canActivate: [adminGuard], title: 'Payments | Cycle Service Center' },
+      // { path: 'reports', component: ReportsDashboardComponent, canActivate: [adminGuard], title: 'Reports | Cycle Service Center' },
 
       // Settings (Role-aware for both Admin and User)
       { path: 'settings', component: WorkshopSettingsComponent, title: 'Settings | Cycle Service Center' },
@@ -154,14 +154,14 @@ export const routes: Routes = [
   },
 
   // 404 Not Found Handling
-  { 
-    path: 'notfound', 
-    component: NotFoundComponent, 
-    title: '404 - Page Not Found | Cycle Service Center' 
+  {
+    path: 'notfound',
+    component: NotFoundComponent,
+    title: '404 - Page Not Found | Cycle Service Center'
   },
-  { 
-    path: '**', 
-    component: NotFoundComponent, 
-    title: '404 - Page Not Found | Cycle Service Center' 
+  {
+    path: '**',
+    component: NotFoundComponent,
+    title: '404 - Page Not Found | Cycle Service Center'
   },
 ];

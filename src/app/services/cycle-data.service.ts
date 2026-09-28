@@ -886,7 +886,7 @@ export class CycleDataService {
   );
 
   // Tickets CRUD
-  addTicket(dto: CreateServiceTicketDto): Observable<ServiceTicket> {
+  createTicket(dto: CreateServiceTicketDto): ServiceTicket {
     const customer = this.customers().find(c => c.id === dto.customerId);
     const bicycle = this.bicycles().find(b => b.id === dto.cycleId);
     const tech = this.technicians().find(t => t.id === dto.assigneeId);
@@ -913,8 +913,12 @@ export class CycleDataService {
       contactPhone: dto.contactPhone || customer?.phone || '',
       contactEmail: dto.contactEmail || customer?.email || '',
       description: dto.description,
-      estimatedCost: dto.estimatedCost || 120,
-      category: dto.category || 'General Service',
+      estimatedCost: dto.estimatedCost || 850,
+      estimatedMinutes: dto.estimatedMinutes || 60,
+      department: dto.department || 'Bike Service',
+      serviceCatalogId: dto.serviceCatalogId,
+      category: dto.category || dto.department || 'Bike Service',
+      sopList: dto.sopList,
       createdAt: '2026-09-20 11:45',
       updatedAt: '2026-09-20 11:45',
       enabled: dto.enabled ?? true
@@ -929,18 +933,24 @@ export class CycleDataService {
       customerName: newTicket.customerName,
       customerPhone: newTicket.contactPhone,
       bicycleModel: newTicket.cycleModel,
-      serviceName: newTicket.category || 'General Service',
+      serviceName: newTicket.category || 'Bike Service',
+      department: newTicket.department,
       technicianName: newTicket.assigneeName,
       technicianId: newTicket.assigneeId,
       scheduledTime: '12:00 PM',
       status: newTicket.status,
-      cost: newTicket.estimatedCost || 120,
+      cost: newTicket.estimatedCost || 850,
       progress: newTicket.status === 'In Progress' ? 25 : 0,
       notes: newTicket.description,
       date: '2026-09-20'
     };
     this.serviceJobsSignal.update(list => [newJob, ...list]);
 
+    return newTicket;
+  }
+
+  addTicket(dto: CreateServiceTicketDto): Observable<ServiceTicket> {
+    const newTicket = this.createTicket(dto);
     return of(newTicket).pipe(delay(300));
   }
 

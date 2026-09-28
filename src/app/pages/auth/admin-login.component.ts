@@ -358,8 +358,6 @@ export class AdminLoginComponent implements OnInit {
       },
       error: (err) => {
         this.isLoading = false;
-        console.log('hi 2');
-        console.log(err)
         if (err?.message === 'ACCESS_DENIED_NOT_ADMIN') {
           this.errorMessage = "You don't have permission to access the admin portal.";
         } else if (err?.message === 'INVALID_CREDENTIALS' || err?.status === 401) {

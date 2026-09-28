@@ -7,6 +7,95 @@ export type AppointmentStatus = 'Scheduled' | 'Confirmed' | 'In Service' | 'Comp
 
 export type TechnicianAvailability = 'Available' | 'On Job' | 'On Break' | 'Off Duty';
 
+// FREEWHEEL FACTORY - Service System Taxonomy
+export type ServiceDepartment = 
+  | 'Bike Service'
+  | 'Performance & Race'
+  | 'Bike Fit & Ergonomics'
+  | 'Suspension Lab'
+  | 'Wheels & Tyres'
+  | 'Components & Drivetrain'
+  | 'Mobile & Event Support'
+  | 'Inspection & Digital';
+
+export type DigitalHealthStatus = 'GOOD' | 'ATTENTION_REQUIRED' | 'REPLACE_OR_REPAIR';
+
+export interface SOPCheckItem {
+  id: string;
+  step: string;
+  completed?: boolean;
+  notes?: string;
+}
+
+export interface ServiceCatalogItem {
+  id: string;
+  categoryNumber: number;
+  code: string;
+  name: string;
+  department: ServiceDepartment;
+  tagline: string;
+  description: string;
+  icon: string;
+  basePrice: number;
+  estimatedMinutes: number;
+  sopChecklist: string[];
+  compatibleBikeTypes: BicycleType[];
+  isSignature: boolean;
+  signatureBadge?: string;
+  includedBenefits?: string[];
+}
+
+export interface ComponentHealthItem {
+  componentName: string;
+  category: 'Frame' | 'Fork' | 'Shock' | 'Wheels' | 'Drivetrain' | 'Brakes' | 'Bearings' | 'Cockpit' | 'Electrical';
+  status: DigitalHealthStatus;
+  measuredWear?: string;
+  technicianNotes?: string;
+  actionRequired?: string;
+}
+
+export interface DigitalBicyclePassport {
+  id: string;
+  bikeId: string;
+  serialNumber: string;
+  frameNumber: string;
+  brand: string;
+  model: string;
+  bikeType: BicycleType;
+  ownerName: string;
+  ownerPhone: string;
+  overallHealthScore: number; // 0 - 100%
+  raceReadyStatus: 'PASS' | 'CONDITIONAL' | 'FAIL' | 'NOT_APPLICABLE';
+  lastInspectionDate: string;
+  inspectorName: string;
+  inspectionItems: ComponentHealthItem[];
+  verifiedTorqueSpecs: boolean;
+  ultrasonicDrivetrainCertified: boolean;
+  notes?: string;
+  qrCodeToken?: string;
+}
+
+export interface BikeFitProfile {
+  id: string;
+  customerId: string;
+  customerName: string;
+  bikeModel: string;
+  fitDate: string;
+  fitterName: string;
+  saddleHeightMm: number;
+  saddleSetbackMm: number;
+  saddleTiltDeg: number;
+  reachMm: number;
+  dropMm: number;
+  stemLengthMm: number;
+  handlebarWidthMm: number;
+  kneeAngleDeg: number;
+  cleatForeAftMm: number;
+  cleatAngleDeg: number;
+  qFactorMm: number;
+  reportNotes?: string;
+}
+
 export interface ServiceTicket {
   id: string;
   customerId: string;
@@ -25,7 +114,13 @@ export interface ServiceTicket {
   contactEmail: string;
   description: string;
   estimatedCost?: number;
+  estimatedMinutes?: number;
+  department?: ServiceDepartment;
+  serviceCode?: string;
+  serviceCatalogId?: string;
   category?: string;
+  sopList?: SOPCheckItem[];
+  passportId?: string;
   createdAt: string;
   updatedAt: string;
   enabled?: boolean;
@@ -42,7 +137,11 @@ export interface CreateServiceTicketDto {
   contactEmail: string;
   description: string;
   category?: string;
+  department?: ServiceDepartment;
+  serviceCatalogId?: string;
   estimatedCost?: number;
+  estimatedMinutes?: number;
+  sopList?: SOPCheckItem[];
   enabled?: boolean;
 }
 
@@ -87,6 +186,7 @@ export interface ServiceJob {
   bicycleModel: string;
   cycleType?: BicycleType;
   serviceName: string;
+  department?: ServiceDepartment;
   technicianName: string;
   technicianId?: string;
   scheduledTime: string;
@@ -95,6 +195,8 @@ export interface ServiceJob {
   progress: number;
   notes?: string;
   date: string;
+  sopCompletedCount?: number;
+  sopTotalCount?: number;
   partsUsed?: { name: string; qty: number; price: number }[];
 }
 
@@ -105,6 +207,7 @@ export interface CustomerBicycleSummary {
   type: BicycleType;
   serialNumber: string;
   lastService: string;
+  healthScore?: number;
 }
 
 export interface Customer {
@@ -137,12 +240,14 @@ export interface Bicycle {
   customerName: string;
   purchaseDate: string;
   status: 'Good' | 'Needs Service' | 'In Service' | 'Ready for Pickup';
+  healthScore?: number;
   lastServiceDate: string;
   nextServiceDate: string;
   notes?: string;
   color?: string;
   gearSystem?: string;
   brakeType?: string;
+  passportId?: string;
 }
 
 export interface Technician {
