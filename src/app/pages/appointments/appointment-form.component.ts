@@ -9,8 +9,7 @@ import { DatePickerModule } from 'primeng/datepicker';
 import { TextareaModule } from 'primeng/textarea';
 import { ButtonModule } from 'primeng/button';
 import { MessageModule } from 'primeng/message';
-import { ToastModule } from 'primeng/toast';
-import { MessageService } from 'primeng/api';
+import { AppNotificationService } from '../../common/services/notification.service';
 import { CycleDataService } from '../../services/cycle-data.service';
 import { BicycleType, CreateAppointmentDto } from '../../models/cycle-management.models';
 
@@ -27,13 +26,9 @@ import { BicycleType, CreateAppointmentDto } from '../../models/cycle-management
     DatePickerModule,
     TextareaModule,
     ButtonModule,
-    MessageModule,
-    ToastModule
+    MessageModule
   ],
-  providers: [MessageService],
   template: `
-    <p-toast></p-toast>
-
     <div class="max-w-4xl mx-auto">
       <!-- Breadcrumb & Header -->
       <div class="flex items-center justify-between mb-6">
@@ -303,7 +298,7 @@ import { BicycleType, CreateAppointmentDto } from '../../models/cycle-management
 export class AppointmentFormComponent implements OnInit {
   private fb = inject(FormBuilder);
   private router = inject(Router);
-  private messageService = inject(MessageService);
+  private notificationService = inject(AppNotificationService);
   protected dataService = inject(CycleDataService);
 
   appointmentForm!: FormGroup;
@@ -465,22 +460,14 @@ export class AppointmentFormComponent implements OnInit {
     this.dataService.addAppointment(dto).subscribe({
       next: (apt) => {
         this.submitting = false;
-        this.messageService.add({
-          severity: 'success',
-          summary: 'Appointment Booked',
-          detail: `Booking ${apt.id} confirmed for ${apt.customerName} on ${apt.date}.`
-        });
+        this.notificationService.showApiSuccess('POST', 'Appointment', `Booking #${apt.id} confirmed for ${apt.customerName} on ${apt.date}.`);
         setTimeout(() => {
           this.router.navigate(['/appointments']);
         }, 600);
       },
-      error: () => {
+      error: (err) => {
         this.submitting = false;
-        this.messageService.add({
-          severity: 'error',
-          summary: 'Error',
-          detail: 'Could not create appointment.'
-        });
+        this.notificationService.handleApiError('create appointment', err);
       }
     });
   }

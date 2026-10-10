@@ -5,8 +5,6 @@ import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { TagModule } from 'primeng/tag';
-import { ToastModule } from 'primeng/toast';
-import { MessageService } from 'primeng/api';
 import { CycleDataService } from '../../services/cycle-data.service';
 import { PaymentRecord } from '../../models/cycle-management.models';
 
@@ -19,13 +17,9 @@ import { PaymentRecord } from '../../models/cycle-management.models';
     TableModule,
     ButtonModule,
     InputTextModule,
-    TagModule,
-    ToastModule
+    TagModule
   ],
-  providers: [MessageService],
   template: `
-    <p-toast></p-toast>
-
     <div class="flex flex-col gap-6">
       <!-- Header -->
       <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-surface-0 dark:bg-surface-900 p-6 rounded-xl border border-surface-200 dark:border-surface-700 shadow-sm">

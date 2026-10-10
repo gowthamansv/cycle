@@ -4,8 +4,9 @@ import { lastValueFrom } from 'rxjs';
 
 interface Config {
   AuthUrl: string;
-
+  ApiUrl?: string;
 }
+
 @Injectable({
   providedIn: 'root',
 })
@@ -20,15 +21,22 @@ export class AppConfigService {
       this.appConfig.set(value);
       return true;
     } catch (error: any) {
-      throw new Error('Failed to load config: ' + error.message);
+      console.warn('Config file load warning:', error?.message);
+      // Fallback configuration if config.json fails
+      this.appConfig.set({
+        AuthUrl: 'https://localhost:7167/',
+        ApiUrl: 'https://localhost:7167/'
+      });
+      return true;
     }
   }
 
-  get AuthUrl() {
-    if (!this.appConfig()) {
-      throw Error('Config file not loaded!');
-    }
-    return this.appConfig()?.AuthUrl;
+  get AuthUrl(): string {
+    return this.appConfig()?.AuthUrl || 'https://localhost:7167/';
   }
 
+  get apiUrl(): string {
+    const raw = this.appConfig()?.ApiUrl || this.appConfig()?.AuthUrl || 'https://localhost:7167/';
+    return raw.endsWith('/') ? raw : `${raw}/`;
+  }
 }

@@ -205,7 +205,7 @@ import { ServiceJob, TicketStatus } from '../../models/cycle-management.models';
           </div>
           <div class="flex gap-2">
             <p-button
-              *ngIf="selectedJob.status === 'Waiting'"
+              *ngIf="selectedJob.status === 'New'"
               label="Assign & Start"
               icon="pi pi-play"
               size="small"
@@ -235,7 +235,7 @@ export class ServiceTodayJobsWidget {
       case 'Completed': return 'success';
       case 'In Progress': return 'warn';
       case 'Assigned': return 'info';
-      case 'Waiting': return 'secondary';
+      case 'New': return 'secondary';
       case 'Cancelled': return 'danger';
       default: return 'info';
     }
@@ -247,7 +247,7 @@ export class ServiceTodayJobsWidget {
   }
 
   advanceStatus(job: ServiceJob): void {
-    if (job.status === 'Waiting') {
+    if (job.status === 'New') {
       this.dataService.updateJobStatus(job.id, 'In Progress');
     } else if (job.status === 'Assigned' || job.status === 'In Progress') {
       this.dataService.updateJobStatus(job.id, 'Completed');

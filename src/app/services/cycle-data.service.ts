@@ -77,7 +77,7 @@ export class CycleDataService {
       serialNumber: 'CM219084A09',
       companyName: 'Apex Velo Club',
       statusId: 'WAITING',
-      status: 'Waiting',
+      status: 'New',
       priorityId: 'URGENT',
       priority: 'Urgent',
       assigneeId: 'TECH-001',
@@ -146,7 +146,7 @@ export class CycleDataService {
       serialNumber: 'SCZ8810294B',
       companyName: 'Cascade Mountain Club',
       statusId: 'WAITING',
-      status: 'Waiting',
+      status: 'New',
       priorityId: 'MEDIUM',
       priority: 'Medium',
       assigneeId: 'TECH-004',
@@ -367,7 +367,7 @@ export class CycleDataService {
       technicianName: 'Alex Rivera',
       technicianId: 'TECH-001',
       scheduledTime: '01:15 PM',
-      status: 'Waiting',
+      status: 'New',
       cost: 180,
       progress: 0,
       notes: 'Bike checked in at reception.',
@@ -901,13 +901,13 @@ export class CycleDataService {
       companyName: dto.companyName || customer?.companyName || 'Private Customer',
       statusId: dto.statusId || 'WAITING',
       status: (dto.statusId === 'IN_PROGRESS' ? 'In Progress' :
-               dto.statusId === 'ASSIGNED' ? 'Assigned' :
-               dto.statusId === 'COMPLETED' ? 'Completed' :
-               dto.statusId === 'CANCELLED' ? 'Cancelled' : 'Waiting') as TicketStatus,
+        dto.statusId === 'ASSIGNED' ? 'Assigned' :
+          dto.statusId === 'COMPLETED' ? 'Completed' :
+            dto.statusId === 'CANCELLED' ? 'Cancelled' : 'New') as TicketStatus,
       priorityId: dto.priorityId || 'MEDIUM',
       priority: (dto.priorityId === 'HIGH' ? 'High' :
-                 dto.priorityId === 'URGENT' ? 'Urgent' :
-                 dto.priorityId === 'LOW' ? 'Low' : 'Medium'),
+        dto.priorityId === 'URGENT' ? 'Urgent' :
+          dto.priorityId === 'LOW' ? 'Low' : 'Medium'),
       assigneeId: dto.assigneeId || 'TECH-001',
       assigneeName: tech ? tech.name : 'Unassigned',
       contactPhone: dto.contactPhone || customer?.phone || '',
@@ -1010,8 +1010,8 @@ export class CycleDataService {
       list.map(j => {
         if (j.id === id) {
           const progress = status === 'Completed' ? 100 :
-                           status === 'In Progress' ? 65 :
-                           status === 'Assigned' ? 25 : 0;
+            status === 'In Progress' ? 65 :
+              status === 'Assigned' ? 25 : 0;
           return { ...j, status, progress };
         }
         return j;

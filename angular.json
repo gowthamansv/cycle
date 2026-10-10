@@ -34,7 +34,8 @@
               "src/styles.scss",
               "src/assets/styles.scss",
               "src/assets/tailwind.css"
-            ]
+            ],
+            "allowedCommonJsDependencies": ["qrcode", "quill", "chart.js"]
           },
           "configurations": {
             "production": {

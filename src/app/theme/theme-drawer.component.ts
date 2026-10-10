@@ -139,20 +139,20 @@ import { ThemeService } from './theme.service';
       :host ::ng-deep .theme-settings-drawer {
         width: 380px !important;
         max-width: 90vw !important;
-        background: var(--surface-card, #121212) !important;
+        background: var(--surface-card, var(--p-content-background, #121212)) !important;
         border-left: 1px solid var(--surface-border, rgba(255, 255, 255, 0.1)) !important;
-        box-shadow: -10px 0 30px rgba(0, 0, 0, 0.35) !important;
+        box-shadow: -10px 0 30px rgba(0, 0, 0, 0.25) !important;
       }
 
       :host ::ng-deep .theme-settings-drawer .p-drawer-header {
         padding: 1.25rem 1.5rem !important;
         border-bottom: 1px solid var(--surface-border, rgba(255, 255, 255, 0.1)) !important;
-        background: var(--surface-card, #121212) !important;
+        background: var(--surface-card, var(--p-content-background, #121212)) !important;
       }
 
       :host ::ng-deep .theme-settings-drawer .p-drawer-content {
         padding: 0 !important;
-        background: var(--surface-card, #121212) !important;
+        background: var(--surface-card, var(--p-content-background, #121212)) !important;
       }
 
       .drawer-header-content {
@@ -176,14 +176,14 @@ import { ThemeService } from './theme.service';
         margin: 0;
         font-size: 1.15rem;
         font-weight: 700;
-        color: var(--text-color, #ffffff);
+        color: var(--text-color, var(--p-text-color, #0f172a));
         letter-spacing: -0.01em;
       }
 
       .drawer-subtitle {
         margin: 2px 0 0 0;
         font-size: 0.8rem;
-        color: var(--text-color-secondary, #a3a3a3);
+        color: var(--text-color-secondary, var(--p-text-muted-color, #64748b));
       }
 
       .drawer-body {
@@ -210,7 +210,7 @@ import { ThemeService } from './theme.service';
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.05em;
-        color: var(--text-color, #ffffff);
+        color: var(--text-color, var(--p-text-color, #0f172a));
       }
 
       .section-hint {
@@ -221,7 +221,7 @@ import { ThemeService } from './theme.service';
 
       .section-divider {
         height: 1px;
-        background: var(--surface-border, rgba(255, 255, 255, 0.08));
+        background: var(--surface-border, rgba(0, 0, 0, 0.08));
         margin: 0.25rem 0;
       }
 
@@ -239,8 +239,8 @@ import { ThemeService } from './theme.service';
         text-align: center;
         padding: 1rem 0.75rem;
         border-radius: 10px;
-        background: var(--surface-ground, rgba(255, 255, 255, 0.04));
-        border: 2px solid var(--surface-border, rgba(255, 255, 255, 0.08));
+        background: var(--surface-ground, rgba(125, 125, 125, 0.06));
+        border: 2px solid var(--surface-border, rgba(125, 125, 125, 0.15));
         cursor: pointer;
         position: relative;
         transition: all 0.2s ease;
@@ -249,12 +249,12 @@ import { ThemeService } from './theme.service';
 
       .mode-card:hover {
         border-color: var(--primary-color, #ff6a00);
-        background: rgba(255, 106, 0, 0.05);
+        background: color-mix(in srgb, var(--primary-color, #ff6a00) 8%, transparent);
       }
 
       .mode-card.active {
         border-color: var(--primary-color, #ff6a00);
-        background: rgba(255, 106, 0, 0.1);
+        background: color-mix(in srgb, var(--primary-color, #ff6a00) 14%, transparent);
       }
 
       .mode-icon-circle {
@@ -286,12 +286,12 @@ import { ThemeService } from './theme.service';
       .mode-name {
         font-size: 0.9rem;
         font-weight: 600;
-        color: var(--text-color, #ffffff);
+        color: var(--text-color, var(--p-text-color, #0f172a));
       }
 
       .mode-desc {
         font-size: 0.725rem;
-        color: var(--text-color-secondary, #a3a3a3);
+        color: var(--text-color-secondary, var(--p-text-muted-color, #64748b));
       }
 
       .active-badge {
@@ -316,20 +316,20 @@ import { ThemeService } from './theme.service';
         gap: 0.45rem;
         padding: 0.75rem 0.5rem;
         border-radius: 10px;
-        background: var(--surface-ground, rgba(255, 255, 255, 0.04));
-        border: 2px solid var(--surface-border, rgba(255, 255, 255, 0.08));
+        background: var(--surface-ground, rgba(125, 125, 125, 0.06));
+        border: 2px solid var(--surface-border, rgba(125, 125, 125, 0.15));
         cursor: pointer;
         transition: all 0.2s ease;
       }
 
       .color-option-btn:hover {
-        border-color: rgba(255, 255, 255, 0.3);
+        border-color: var(--primary-color, #ff6a00);
         transform: translateY(-2px);
       }
 
       .color-option-btn.selected {
         border-color: var(--primary-color, #ff6a00);
-        background: rgba(255, 106, 0, 0.1);
+        background: color-mix(in srgb, var(--primary-color, #ff6a00) 12%, transparent);
       }
 
       .color-swatch-circle {
@@ -339,7 +339,7 @@ import { ThemeService } from './theme.service';
         display: flex;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
         transition: transform 0.2s ease;
       }
 
@@ -353,7 +353,7 @@ import { ThemeService } from './theme.service';
       .color-name {
         font-size: 0.8rem;
         font-weight: 600;
-        color: var(--text-color, #ffffff);
+        color: var(--text-color, var(--p-text-color, #0f172a));
       }
 
       /* RESET SECTION */
@@ -364,7 +364,7 @@ import { ThemeService } from './theme.service';
 
       .reset-hint {
         font-size: 0.75rem;
-        color: var(--text-color-secondary, #a3a3a3);
+        color: var(--text-color-secondary, var(--p-text-muted-color, #64748b));
         text-align: center;
         margin-top: 0.25rem;
       }

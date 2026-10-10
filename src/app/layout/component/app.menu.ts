@@ -36,21 +36,7 @@ export class AppMenu implements OnInit {
           {
             label: 'Services',
             icon: 'pi pi-fw pi-wrench',
-            routerLink: ['/services'],
-            badge: '8',
-            badgeClass: 'p-badge-warning'
-          },
-          {
-            label: 'Appointments',
-            icon: 'pi pi-fw pi-calendar-plus',
-            routerLink: ['/appointments'],
-            badge: '6',
-            badgeClass: 'p-badge-info'
-          },
-          {
-            label: 'Service Jobs',
-            icon: 'pi pi-fw pi-sliders-h',
-            routerLink: ['/service-jobs']
+            routerLink: ['/services']
           }
         ]
       },
@@ -74,36 +60,6 @@ export class AppMenu implements OnInit {
           }
         ]
       },
-      {
-        label: 'WORKSHOP & FINANCE',
-        items: [
-          {
-            label: 'Inventory',
-            icon: 'pi pi-fw pi-box',
-            routerLink: ['/inventory']
-          },
-          {
-            label: 'Payments',
-            icon: 'pi pi-fw pi-credit-card',
-            routerLink: ['/payments']
-          },
-          {
-            label: 'Reports',
-            icon: 'pi pi-fw pi-chart-line',
-            routerLink: ['/reports']
-          }
-        ]
-      },
-      {
-        label: 'SYSTEM',
-        items: [
-          {
-            label: 'Settings',
-            icon: 'pi pi-fw pi-cog',
-            routerLink: ['/settings']
-          }
-        ]
-      }
     ];
   }
 }

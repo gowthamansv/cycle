@@ -12,7 +12,8 @@ import { DialogModule } from 'primeng/dialog';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ToastModule } from 'primeng/toast';
 import { TooltipModule } from 'primeng/tooltip';
-import { ConfirmationService, MessageService } from 'primeng/api';
+import { ConfirmationService } from 'primeng/api';
+import { AppNotificationService } from '../../common/services/notification.service';
 import { CycleDataService } from '../../services/cycle-data.service';
 import { Appointment, AppointmentStatus } from '../../models/cycle-management.models';
 
@@ -34,9 +35,8 @@ import { Appointment, AppointmentStatus } from '../../models/cycle-management.mo
     ToastModule,
     TooltipModule
   ],
-  providers: [ConfirmationService, MessageService],
+  providers: [ConfirmationService],
   template: `
-    <p-toast></p-toast>
     <p-confirmdialog></p-confirmdialog>
 
     <div class="flex flex-col gap-6">
@@ -61,24 +61,10 @@ import { Appointment, AppointmentStatus } from '../../models/cycle-management.mo
         </div>
       </div>
 
-      <!-- Filters & Search Toolbar -->
+      <!-- Filters Toolbar -->
       <div class="card p-4 shadow-sm border border-surface-200 dark:border-surface-700">
-        <div class="grid grid-cols-12 gap-4 items-end">
-          <div class="col-span-12 sm:col-span-6 md:col-span-3">
-            <label class="block text-xs font-semibold text-muted-color uppercase mb-1.5">Customer / Bike Search</label>
-            <div class="relative w-full">
-              <i class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-muted-color"></i>
-              <input
-                pInputText
-                type="text"
-                [(ngModel)]="searchQuery"
-                placeholder="Search name, phone, bike..."
-                class="w-full pl-9"
-              />
-            </div>
-          </div>
-
-          <div class="col-span-12 sm:col-span-6 md:col-span-2">
+        <div class="flex flex-wrap items-end gap-4">
+          <div class="w-full sm:w-56">
             <label class="block text-xs font-semibold text-muted-color uppercase mb-1.5">Status</label>
             <p-select
               [options]="statusOptions"
@@ -89,7 +75,7 @@ import { Appointment, AppointmentStatus } from '../../models/cycle-management.mo
             ></p-select>
           </div>
 
-          <div class="col-span-12 sm:col-span-6 md:col-span-3">
+          <div class="w-full sm:w-64">
             <label class="block text-xs font-semibold text-muted-color uppercase mb-1.5">Technician</label>
             <p-select
               [options]="technicianOptions"
@@ -100,7 +86,7 @@ import { Appointment, AppointmentStatus } from '../../models/cycle-management.mo
             ></p-select>
           </div>
 
-          <div class="col-span-12 sm:col-span-6 md:col-span-2">
+          <div class="w-full sm:w-56">
             <label class="block text-xs font-semibold text-muted-color uppercase mb-1.5">Date Filter</label>
             <p-select
               [options]="dateOptions"
@@ -111,14 +97,14 @@ import { Appointment, AppointmentStatus } from '../../models/cycle-management.mo
             ></p-select>
           </div>
 
-          <div class="col-span-12 md:col-span-2 flex gap-2">
+          <div class="w-full sm:w-auto">
             <p-button
               label="Reset"
               icon="pi pi-filter-slash"
               [outlined]="true"
               severity="secondary"
               (click)="resetFilters()"
-              styleClass="w-full"
+              styleClass="w-full sm:w-auto"
             ></p-button>
           </div>
         </div>
@@ -328,9 +314,8 @@ import { Appointment, AppointmentStatus } from '../../models/cycle-management.mo
 export class AppointmentsListComponent implements OnInit {
   protected dataService = inject(CycleDataService);
   private confirmationService = inject(ConfirmationService);
-  private messageService = inject(MessageService);
+  private notificationService = inject(AppNotificationService);
 
-  searchQuery = '';
   selectedStatus: string | null = null;
   selectedTechnician: string | null = null;
   selectedDateFilter: string | null = null;
@@ -364,22 +349,15 @@ export class AppointmentsListComponent implements OnInit {
 
   get filteredAppointments(): Appointment[] {
     return this.dataService.appointments().filter(apt => {
-      const matchesSearch = !this.searchQuery ||
-        apt.id.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-        apt.customerName.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-        apt.cycleModel.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-        apt.contactPhone.includes(this.searchQuery);
-
       const matchesStatus = !this.selectedStatus || apt.status === this.selectedStatus;
       const matchesTech = !this.selectedTechnician || apt.technicianName === this.selectedTechnician;
       const matchesDate = !this.selectedDateFilter || apt.date === this.selectedDateFilter;
 
-      return matchesSearch && matchesStatus && matchesTech && matchesDate;
+      return matchesStatus && matchesTech && matchesDate;
     });
   }
 
   resetFilters(): void {
-    this.searchQuery = '';
     this.selectedStatus = null;
     this.selectedTechnician = null;
     this.selectedDateFilter = null;
@@ -405,11 +383,7 @@ export class AppointmentsListComponent implements OnInit {
   updateStatus(apt: Appointment, newStatus: AppointmentStatus): void {
     this.dataService.updateAppointmentStatus(apt.id, newStatus);
     apt.status = newStatus;
-    this.messageService.add({
-      severity: 'success',
-      summary: 'Appointment Updated',
-      detail: `Status changed to ${newStatus}.`
-    });
+    this.notificationService.showApiSuccess('UPDATE', 'Appointment', `Status changed to ${newStatus}.`);
     this.detailDialogVisible = false;
   }
 
@@ -421,11 +395,7 @@ export class AppointmentsListComponent implements OnInit {
       acceptButtonStyleClass: 'p-button-danger',
       accept: () => {
         this.dataService.deleteAppointment(apt.id);
-        this.messageService.add({
-          severity: 'success',
-          summary: 'Deleted',
-          detail: `Appointment ${apt.id} deleted.`
-        });
+        this.notificationService.showApiSuccess('DELETE', 'Appointment', `Appointment #${apt.id} was removed.`);
       }
     });
   }

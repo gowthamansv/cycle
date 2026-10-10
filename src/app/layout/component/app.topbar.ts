@@ -54,7 +54,11 @@ interface MenuGroup {
 
       <!-- BRAND LOGO -->
       <a routerLink="/" class="logo-section">
-        <img src="assets/images/logo.png" alt="Cycle Service Center" class="logo" />
+        <img 
+          [src]="themeService.isDark() ? 'assets/images/logo.png' : 'assets/images/logo-dark.png'" 
+          alt="Cycle Service Center" 
+          class="logo" 
+        />
         <div class="logo-text hidden sm:flex flex-col">
           <span class="brand-title font-bold leading-tight">CYCLE SERVICE</span>
           <span class="brand-sub text-[10px] tracking-wider uppercase opacity-75">
@@ -112,18 +116,64 @@ interface MenuGroup {
         </p-menubar>
       </nav>
 
-      <!-- SEARCH BAR -->
-      <div class="search-section">
+      <!-- MENU SEARCH BAR WITH SUGGESTIONS -->
+      <div class="search-section relative">
         <!-- Desktop search -->
-        <p-iconfield class="desktop-search">
+        <p-iconfield class="desktop-search relative">
           <p-inputicon class="pi pi-search"></p-inputicon>
           <input 
             type="text" 
             pInputText 
             [(ngModel)]="searchQuery"
-            placeholder="Search tickets, bikes, riders..." 
+            (focus)="searchFocused = true"
+            (blur)="onSearchBlur()"
+            placeholder="Search navigation menu..." 
           />
+          <button 
+            *ngIf="searchQuery" 
+            type="button" 
+            (mousedown)="searchQuery = ''" 
+            class="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-color hover:text-surface-900 dark:hover:text-surface-0 border-none bg-transparent cursor-pointer p-1"
+          >
+            <i class="pi pi-times text-xs"></i>
+          </button>
         </p-iconfield>
+
+        <!-- Desktop Menu Suggestions Dropdown Overlay -->
+        <div 
+          *ngIf="searchFocused && menuSuggestions().length > 0" 
+          class="absolute left-0 top-full mt-1.5 w-72 max-h-80 overflow-y-auto rounded-xl bg-surface-0 dark:bg-surface-900 border border-surface-200 dark:border-surface-700 shadow-xl p-1.5 z-50 animate-fade-in"
+        >
+          <div class="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-color">
+            Menu Suggestions ({{ menuSuggestions().length }})
+          </div>
+          <a 
+            *ngFor="let item of menuSuggestions()" 
+            (mousedown)="navigateTo(item.routerLink)"
+            class="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors cursor-pointer text-surface-800 dark:text-surface-200 no-underline"
+          >
+            <div class="w-7 h-7 rounded-lg bg-orange-500/10 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0">
+              <i [class]="item.icon" class="text-xs"></i>
+            </div>
+            <div class="flex flex-col min-w-0 flex-1">
+              <div class="font-semibold text-xs truncate flex items-center justify-between">
+                <span>{{ item.label }}</span>
+                <span class="text-[9px] px-1.5 py-0.2 rounded bg-surface-100 dark:bg-surface-800 text-muted-color font-normal">
+                  {{ item.category }}
+                </span>
+              </div>
+              <span *ngIf="item.description" class="text-[10px] text-muted-color truncate">{{ item.description }}</span>
+            </div>
+          </a>
+        </div>
+
+        <!-- No Results Dropdown -->
+        <div 
+          *ngIf="searchFocused && searchQuery.trim() && menuSuggestions().length === 0" 
+          class="absolute left-0 top-full mt-1.5 w-72 rounded-xl bg-surface-0 dark:bg-surface-900 border border-surface-200 dark:border-surface-700 shadow-xl p-3 z-50 text-center text-xs text-muted-color animate-fade-in"
+        >
+          No menu pages matching "{{ searchQuery }}"
+        </div>
 
         <!-- Mobile search toggle -->
         <button class="mobile-search-btn" type="button" aria-label="Search" (click)="toggleSearch()">
@@ -176,25 +226,44 @@ interface MenuGroup {
     </header>
 
     <!-- MOBILE EXPANDABLE SEARCH BAR -->
-    <div *ngIf="showMobileSearch()" class="mobile-search-overlay p-3 bg-surface-card border-b border-surface-border animate-fade-in">
+    <div *ngIf="showMobileSearch()" class="mobile-search-overlay p-3 bg-surface-card border-b border-surface-border animate-fade-in relative z-50">
       <p-iconfield class="w-full block">
         <p-inputicon class="pi pi-search"></p-inputicon>
         <input 
           type="text" 
           pInputText 
           [(ngModel)]="searchQuery" 
-          placeholder="Search..." 
-          class="w-full"
+          placeholder="Search navigation menu..." 
+          class="w-full text-sm"
           autofocus
         />
       </p-iconfield>
+
+      <!-- Mobile Suggestions List -->
+      <div *ngIf="menuSuggestions().length > 0" class="mt-2 max-h-60 overflow-y-auto flex flex-col gap-1">
+        <a 
+          *ngFor="let item of menuSuggestions()" 
+          (click)="navigateTo(item.routerLink)"
+          class="flex items-center gap-2.5 p-2 rounded-lg text-xs bg-surface-50 dark:bg-surface-800/80 hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-800 dark:text-surface-200 cursor-pointer"
+        >
+          <i [class]="item.icon" class="text-orange-500 text-sm"></i>
+          <div class="flex flex-col">
+            <span class="font-semibold text-xs">{{ item.label }} ({{ item.category }})</span>
+            <span *ngIf="item.description" class="text-[10px] text-muted-color">{{ item.description }}</span>
+          </div>
+        </a>
+      </div>
     </div>
 
     <!-- MOBILE NAVIGATION DRAWER (STRUCTURED CATEGORIES) -->
     <p-drawer [(visible)]="mobileDrawerVisible" [modal]="true" position="left" styleClass="mobile-nav-drawer w-80">
       <ng-template #header>
         <div class="flex items-center gap-3">
-          <img src="assets/images/logo.png" alt="Cycle Service Center" class="w-8 h-8 object-contain" />
+          <img 
+            [src]="themeService.isDark() ? 'assets/images/logo.png' : 'assets/images/logo-dark.png'" 
+            alt="Cycle Service Center" 
+            class="w-8 h-8 object-contain" 
+          />
           <div class="flex flex-col">
             <span class="font-bold text-sm text-surface-900 dark:text-surface-0">CYCLE SERVICE</span>
             <span class="text-xs text-orange-500 font-semibold">{{ userRoleLabel() }} Portal</span>
@@ -272,11 +341,11 @@ interface MenuGroup {
         align-items: center;
         padding: 0 24px;
         gap: 16px;
-        background: var(--surface-card, #121212);
+        background: var(--surface-card, var(--p-content-background, #121212));
         backdrop-filter: blur(16px);
         -webkit-backdrop-filter: blur(16px);
-        border-bottom: 1px solid var(--surface-border, rgba(255, 255, 255, 0.1));
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+        border-bottom: 1px solid var(--surface-border, rgba(125, 125, 125, 0.15));
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
         box-sizing: border-box;
         z-index: 1000;
         transition: background-color 0.25s ease, border-color 0.25s ease;
@@ -292,13 +361,13 @@ interface MenuGroup {
         border: none;
         border-radius: 8px;
         background: transparent;
-        color: var(--text-color, #ffffff);
+        color: var(--text-color, var(--p-text-color, #0f172a));
         cursor: pointer;
         transition: background-color 0.2s ease, color 0.2s ease;
       }
 
       .mobile-menu-btn:hover {
-        background: var(--surface-hover, rgba(255, 255, 255, 0.08));
+        background: var(--surface-hover, rgba(125, 125, 125, 0.1));
         color: var(--primary-color, #ff6a00);
       }
 
@@ -316,12 +385,13 @@ interface MenuGroup {
         width: 40px;
         height: 40px;
         object-fit: contain;
+        transition: transform 0.2s ease;
       }
 
       .brand-title {
         font-size: 13px;
         letter-spacing: 0.05em;
-        color: var(--text-color, #ffffff);
+        color: var(--text-color, var(--p-text-color, #0f172a));
       }
 
       .brand-sub {
@@ -354,7 +424,7 @@ interface MenuGroup {
       }
 
       :host ::ng-deep .admin-menubar .p-menubar-item-link {
-        color: var(--text-color, #e2e8f0) !important;
+        color: var(--text-color, var(--p-text-color, #334155)) !important;
         background: transparent !important;
         border-radius: 8px;
         padding: 8px 12px;
@@ -368,22 +438,22 @@ interface MenuGroup {
       :host ::ng-deep .admin-menubar .p-menubar-item-link:hover,
       :host ::ng-deep .admin-menubar .p-menubar-item.p-focus > .p-menubar-item-content .p-menubar-item-link,
       :host ::ng-deep .admin-menubar .p-menubar-item-active > .p-menubar-item-content .p-menubar-item-link {
-        background: var(--surface-hover, rgba(255, 255, 255, 0.08)) !important;
+        background: var(--surface-hover, rgba(125, 125, 125, 0.1)) !important;
         color: var(--primary-color, #ff6a00) !important;
       }
 
       :host ::ng-deep .admin-menubar .active-topbar-link {
         font-weight: 700 !important;
-        background: var(--surface-hover, rgba(255, 255, 255, 0.08)) !important;
+        background: var(--surface-hover, rgba(125, 125, 125, 0.1)) !important;
         color: var(--primary-color, #ff6a00) !important;
       }
 
       /* SUBMENU DROPDOWN STYLING (MEGAMENU / DROPDOWN LOOK) */
       :host ::ng-deep .admin-menubar .p-menubar-submenu {
-        background: var(--surface-overlay, var(--surface-card, #18181b)) !important;
-        border: 1px solid var(--surface-border, rgba(255, 255, 255, 0.12)) !important;
+        background: var(--surface-overlay, var(--surface-card, var(--p-content-background, #18181b))) !important;
+        border: 1px solid var(--surface-border, rgba(125, 125, 125, 0.15)) !important;
         border-radius: 12px !important;
-        box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35) !important;
+        box-shadow: 0 16px 36px rgba(0, 0, 0, 0.25) !important;
         padding: 8px !important;
         min-width: 250px !important;
         backdrop-filter: blur(20px) !important;
@@ -392,7 +462,7 @@ interface MenuGroup {
       }
 
       :host ::ng-deep .admin-menubar .p-menubar-submenu .p-menubar-item-link {
-        color: var(--text-color, #f8fafc) !important;
+        color: var(--text-color, var(--p-text-color, #334155)) !important;
         border-radius: 8px !important;
         padding: 10px 14px !important;
         font-size: 13px !important;
@@ -404,7 +474,7 @@ interface MenuGroup {
 
       :host ::ng-deep .admin-menubar .p-menubar-submenu .p-menubar-item-link:hover,
       :host ::ng-deep .admin-menubar .p-menubar-submenu .p-menubar-item.p-focus > .p-menubar-item-content .p-menubar-item-link {
-        background: var(--surface-hover, rgba(255, 255, 255, 0.08)) !important;
+        background: var(--surface-hover, rgba(125, 125, 125, 0.1)) !important;
         color: var(--primary-color, #ff6a00) !important;
       }
 
@@ -430,9 +500,9 @@ interface MenuGroup {
       :host ::ng-deep .desktop-search input {
         width: 100%;
         box-sizing: border-box;
-        background: var(--surface-ground, rgba(255, 255, 255, 0.06));
-        border: 1px solid var(--surface-border, rgba(255, 255, 255, 0.15));
-        color: var(--text-color, #ffffff);
+        background: var(--surface-ground, rgba(125, 125, 125, 0.08));
+        border: 1px solid var(--surface-border, rgba(125, 125, 125, 0.18));
+        color: var(--text-color, var(--p-text-color, #0f172a));
         border-radius: 8px;
         padding: 7px 10px 7px 34px;
         font-size: 12.5px;
@@ -440,7 +510,7 @@ interface MenuGroup {
       }
 
       :host ::ng-deep .desktop-search input::placeholder {
-        color: var(--text-color-secondary, #94a3b8);
+        color: var(--text-color-secondary, var(--p-text-muted-color, #64748b));
       }
 
       :host ::ng-deep .desktop-search input:focus {
@@ -449,7 +519,7 @@ interface MenuGroup {
       }
 
       :host ::ng-deep .desktop-search .p-inputicon {
-        color: var(--text-color-secondary, #94a3b8);
+        color: var(--text-color-secondary, var(--p-text-muted-color, #64748b));
         font-size: 13px;
       }
 
@@ -462,14 +532,14 @@ interface MenuGroup {
         border: none;
         border-radius: 8px;
         background: transparent;
-        color: var(--text-color, #ffffff);
+        color: var(--text-color, var(--p-text-color, #0f172a));
         cursor: pointer;
         font-size: 16px;
         transition: background-color 0.2s ease, color 0.2s ease;
       }
 
       .mobile-search-btn:hover {
-        background: var(--surface-hover, rgba(255, 255, 255, 0.1));
+        background: var(--surface-hover, rgba(125, 125, 125, 0.1));
         color: var(--primary-color, #ff6a00);
       }
 
@@ -490,14 +560,14 @@ interface MenuGroup {
         border: none;
         border-radius: 8px;
         background: transparent;
-        color: var(--text-color, #ffffff);
+        color: var(--text-color, var(--p-text-color, #334155));
         cursor: pointer;
         font-size: 16px;
         transition: background-color 0.2s ease, color 0.2s ease;
       }
 
       .action-btn:hover {
-        background: var(--surface-hover, rgba(255, 255, 255, 0.1));
+        background: var(--surface-hover, rgba(125, 125, 125, 0.1));
         color: var(--primary-color, #ff6a00);
       }
 
@@ -507,7 +577,7 @@ interface MenuGroup {
         align-items: center;
         gap: 10px;
         padding-left: 12px;
-        border-left: 1px solid var(--surface-border, rgba(255, 255, 255, 0.15));
+        border-left: 1px solid var(--surface-border, rgba(125, 125, 125, 0.18));
       }
 
       .avatar {
@@ -547,7 +617,7 @@ interface MenuGroup {
       .user-name {
         font-size: 13px;
         font-weight: 600;
-        color: var(--text-color, #ffffff);
+        color: var(--text-color, var(--p-text-color, #0f172a));
         line-height: 1.2;
       }
 
@@ -563,7 +633,7 @@ interface MenuGroup {
       }
 
       .user-badge {
-        color: #38bdf8;
+        color: #0284c7;
       }
 
       .logout-btn {
@@ -634,8 +704,50 @@ export class AppTopbar {
   private router = inject(Router);
 
   searchQuery = '';
+  searchFocused = false;
   mobileDrawerVisible = false;
   showMobileSearch = signal(false);
+
+  allMenuItems = computed(() => {
+    const groups = this.currentMenuGroups();
+    const list: { label: string; icon: string; routerLink: string; description?: string; category: string }[] = [];
+    for (const group of groups) {
+      for (const item of group.items) {
+        list.push({
+          label: item.label,
+          icon: item.icon,
+          routerLink: item.routerLink,
+          description: item.description,
+          category: group.title
+        });
+      }
+    }
+    return list;
+  });
+
+  menuSuggestions = computed(() => {
+    const q = this.searchQuery.trim().toLowerCase();
+    if (!q) return [];
+    return this.allMenuItems().filter(item =>
+      item.label.toLowerCase().includes(q) ||
+      item.category.toLowerCase().includes(q) ||
+      (item.description && item.description.toLowerCase().includes(q)) ||
+      item.routerLink.toLowerCase().includes(q)
+    );
+  });
+
+  onSearchBlur(): void {
+    setTimeout(() => {
+      this.searchFocused = false;
+    }, 200);
+  }
+
+  navigateTo(route: string): void {
+    this.searchQuery = '';
+    this.searchFocused = false;
+    this.showMobileSearch.set(false);
+    this.router.navigateByUrl(route);
+  }
 
   // Grouped Menu Structure (Mirroring the categorized system structure)
   private adminMenuGroups: MenuGroup[] = [
@@ -643,9 +755,7 @@ export class AppTopbar {
       title: 'Operations',
       items: [
         { label: 'Dashboard', icon: 'pi pi-th-large', routerLink: '/dashboard', description: 'Overview & telemetry', roles: ['admin'] },
-        { label: 'Services', icon: 'pi pi-wrench', routerLink: '/services', description: 'Repair tickets & active orders', badge: '8', roles: ['admin'] },
-        { label: 'Appointments', icon: 'pi pi-calendar-plus', routerLink: '/appointments', description: 'Scheduled drop-offs', badge: '6', roles: ['admin'] },
-        { label: 'Service Jobs', icon: 'pi pi-sliders-h', routerLink: '/service-jobs', description: 'Live workshop floor queue', roles: ['admin'] },
+        { label: 'Services', icon: 'pi pi-wrench', routerLink: '/services', description: 'Repair tickets & active orders', roles: ['admin'] },
       ],
     },
     {
@@ -654,20 +764,6 @@ export class AppTopbar {
         { label: 'Customers', icon: 'pi pi-users', routerLink: '/customers', description: 'Rider directory & accounts', roles: ['admin'] },
         { label: 'Bicycles', icon: 'pi pi-compass', routerLink: '/bicycles', description: 'Bicycle fleet & serial numbers', roles: ['admin'] },
         { label: 'Technicians', icon: 'pi pi-user-plus', routerLink: '/technicians', description: 'Staff mechanics & assignments', roles: ['admin'] },
-      ],
-    },
-    {
-      title: 'Workshop & Finance',
-      items: [
-        { label: 'Inventory', icon: 'pi pi-box', routerLink: '/inventory', description: 'Components & spare parts stock', roles: ['admin'] },
-        { label: 'Payments', icon: 'pi pi-credit-card', routerLink: '/payments', description: 'Billing receipts & settlements', roles: ['admin'] },
-        { label: 'Reports', icon: 'pi pi-chart-line', routerLink: '/reports', description: 'Revenue & operational metrics', roles: ['admin'] },
-      ],
-    },
-    {
-      title: 'System',
-      items: [
-        { label: 'Settings', icon: 'pi pi-cog', routerLink: '/settings', description: 'Workshop rules & system defaults', roles: ['admin'] },
       ],
     },
   ];
@@ -684,12 +780,6 @@ export class AppTopbar {
       items: [
         { label: 'Customers', icon: 'pi pi-user-plus', routerLink: '/customers', description: 'Register new rider', roles: ['user'] },
         { label: 'Bicycles', icon: 'pi pi-compass', routerLink: '/bicycles', description: 'Register new bicycle', roles: ['user'] },
-      ],
-    },
-    {
-      title: 'Account',
-      items: [
-        { label: 'Settings', icon: 'pi pi-cog', routerLink: '/settings', description: 'Profile, password & preferences', roles: ['user'] },
       ],
     },
   ];
@@ -718,18 +808,6 @@ export class AppTopbar {
               routerLink: '/services',
               title: 'Repair tickets & active orders',
             },
-            {
-              label: 'Appointments',
-              icon: 'pi pi-calendar-plus',
-              routerLink: '/appointments',
-              title: 'Scheduled drop-offs',
-            },
-            {
-              label: 'Service Jobs',
-              icon: 'pi pi-sliders-h',
-              routerLink: '/service-jobs',
-              title: 'Live workshop floor queue',
-            },
           ],
         },
         {
@@ -756,35 +834,6 @@ export class AppTopbar {
             },
           ],
         },
-        {
-          label: 'Workshop & Finance',
-          icon: 'pi pi-box',
-          items: [
-            {
-              label: 'Inventory',
-              icon: 'pi pi-box',
-              routerLink: '/inventory',
-              title: 'Components & spare parts stock',
-            },
-            {
-              label: 'Payments',
-              icon: 'pi pi-credit-card',
-              routerLink: '/payments',
-              title: 'Billing receipts & settlements',
-            },
-            {
-              label: 'Reports',
-              icon: 'pi pi-chart-line',
-              routerLink: '/reports',
-              title: 'Revenue & operational metrics',
-            },
-          ],
-        },
-        {
-          label: 'Settings',
-          icon: 'pi pi-cog',
-          routerLink: '/settings',
-        },
       ];
     } else {
       // User Structured Menu
@@ -804,11 +853,11 @@ export class AppTopbar {
           icon: 'pi pi-compass',
           routerLink: '/bicycles',
         },
-        {
-          label: 'Settings',
-          icon: 'pi pi-cog',
-          routerLink: '/settings',
-        },
+        // {
+        //   label: 'Settings',
+        //   icon: 'pi pi-cog',
+        //   routerLink: '/settings',
+        // },
       ];
     }
   });

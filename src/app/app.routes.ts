@@ -73,83 +73,46 @@ export const routes: Routes = [
   {
     path: '',
     component: AppLayout,
-    canActivate: [authGuard],
+
     children: [
       // Primary Operational Dashboard (Admin Only)
-      { path: '', component: ServiceDashboardComponent, canActivate: [adminGuard], title: 'Dashboard | Cycle Service Center' },
-      { path: 'admin', component: ServiceDashboardComponent, canActivate: [adminGuard], title: 'Admin Workspace | Cycle Service Center' },
-      { path: 'dashboard', component: ServiceDashboardComponent, canActivate: [adminGuard], title: 'Dashboard | Cycle Service Center' },
+      { path: '', component: ServiceDashboardComponent, title: 'Dashboard | Cycle Service Center' },
+      { path: 'admin', component: ServiceDashboardComponent, title: 'Admin Workspace | Cycle Service Center' },
+      { path: 'dashboard', component: ServiceDashboardComponent, title: 'Dashboard | Cycle Service Center' },
 
       // Services (Accessible to both Admin and User)
       { path: 'services', component: ServicesListComponent, title: 'Services | Cycle Service Center' },
       { path: 'services/new', component: ServiceFormComponent, title: 'Create Service | Cycle Service Center' },
 
       // Appointments (Admin Only)
-      { path: 'appointments', component: AppointmentsListComponent, canActivate: [adminGuard], title: 'Appointments | Cycle Service Center' },
-      { path: 'appointments/new', component: AppointmentFormComponent, canActivate: [adminGuard], title: 'New Appointment | Cycle Service Center' },
+      // { path: 'appointments', component: AppointmentsListComponent,  title: 'Appointments | Cycle Service Center' },
+      // { path: 'appointments/new', component: AppointmentFormComponent,  title: 'New Appointment | Cycle Service Center' },
 
-      // Service Jobs (Admin Only)
-      { path: 'service-jobs', component: ServiceJobsListComponent, canActivate: [adminGuard], title: 'Service Jobs | Cycle Service Center' },
+      // Service Jobs (Redirected to unified Services Management)
+      // { path: 'service-jobs', redirectTo: 'services', pathMatch: 'full' },
 
       // Customers (Accessible to both - User sees direct create interface)
       { path: 'customers', component: CustomersListComponent, title: 'Customers | Cycle Service Center' },
-      { path: 'customers/:id', component: CustomerDetailComponent, canActivate: [adminGuard], title: 'Customer Profile | Cycle Service Center' },
+      { path: 'customers/:id', component: CustomerDetailComponent, title: 'Customer Profile | Cycle Service Center' },
 
       // Bicycles (Accessible to both - User sees direct create interface)
       { path: 'bicycles', component: BicyclesListComponent, title: 'Bicycle Fleet | Cycle Service Center' },
-      { path: 'bicycles/:id', component: BicycleDetailComponent, canActivate: [adminGuard], title: 'Bicycle Profile | Cycle Service Center' },
+      { path: 'bicycles/:id', component: BicycleDetailComponent, title: 'Bicycle Profile | Cycle Service Center' },
 
       // Technicians (Admin Only)
-      { path: 'technicians', component: TechniciansListComponent, canActivate: [adminGuard], title: 'Technicians | Cycle Service Center' },
-      { path: 'technicians/:id', component: TechnicianDetailComponent, canActivate: [adminGuard], title: 'Technician Profile | Cycle Service Center' },
-
-      // Workshop & Finance (Admin Only)
-      // { path: 'inventory', component: InventoryListComponent, canActivate: [adminGuard], title: 'Inventory | Cycle Service Center' },
-      // { path: 'payments', component: PaymentsListComponent, canActivate: [adminGuard], title: 'Payments | Cycle Service Center' },
-      // { path: 'reports', component: ReportsDashboardComponent, canActivate: [adminGuard], title: 'Reports | Cycle Service Center' },
+      { path: 'technicians', component: TechniciansListComponent, title: 'Technicians | Cycle Service Center' },
+      { path: 'technicians/:id', component: TechnicianDetailComponent, title: 'Technician Profile | Cycle Service Center' },
 
       // Settings (Role-aware for both Admin and User)
-      { path: 'settings', component: WorkshopSettingsComponent, title: 'Settings | Cycle Service Center' },
+      // { path: 'settings', component: WorkshopSettingsComponent, title: 'Settings | Cycle Service Center' },
 
       // Template & UIKit Demo Pages (Admin Only)
-      { path: 'documentation', component: Documentation, canActivate: [adminGuard] },
-      { path: 'crud', component: Crud, canActivate: [adminGuard] },
-      { path: 'empty', component: Empty, canActivate: [adminGuard] },
-      { path: 'pages/crud', component: Crud, canActivate: [adminGuard] },
-      { path: 'pages/empty', component: Empty, canActivate: [adminGuard] },
+      { path: 'documentation', component: Documentation, },
+      { path: 'crud', component: Crud, },
+      { path: 'empty', component: Empty, },
+      { path: 'pages/crud', component: Crud, },
+      { path: 'pages/empty', component: Empty, },
       { path: 'pages/notfound', component: NotFoundComponent },
-
-      // UI Kit Demos
-      { path: 'button', data: { breadcrumb: 'Button' }, component: ButtonDemo },
-      { path: 'charts', data: { breadcrumb: 'Charts' }, component: ChartDemo },
-      { path: 'file', data: { breadcrumb: 'File' }, component: FileDemo },
-      { path: 'formlayout', data: { breadcrumb: 'Form Layout' }, component: FormLayoutDemo },
-      { path: 'input', data: { breadcrumb: 'Input' }, component: InputDemo },
-      { path: 'list', data: { breadcrumb: 'List' }, component: ListDemo },
-      { path: 'media', data: { breadcrumb: 'Media' }, component: MediaDemo },
-      { path: 'message', data: { breadcrumb: 'Message' }, component: MessagesDemo },
-      { path: 'misc', data: { breadcrumb: 'Misc' }, component: MiscDemo },
-      { path: 'panel', data: { breadcrumb: 'Panel' }, component: PanelsDemo },
-      { path: 'timeline', data: { breadcrumb: 'Timeline' }, component: TimelineDemo },
-      { path: 'table', data: { breadcrumb: 'Table' }, component: TableDemo },
-      { path: 'overlay', data: { breadcrumb: 'Overlay' }, component: OverlayDemo },
-      { path: 'tree', data: { breadcrumb: 'Tree' }, component: TreeDemo },
-      { path: 'menu', data: { breadcrumb: 'Menu' }, component: MenuDemo },
-      { path: 'uikit/button', component: ButtonDemo },
-      { path: 'uikit/charts', component: ChartDemo },
-      { path: 'uikit/file', component: FileDemo },
-      { path: 'uikit/formlayout', component: FormLayoutDemo },
-      { path: 'uikit/input', component: InputDemo },
-      { path: 'uikit/list', component: ListDemo },
-      { path: 'uikit/media', component: MediaDemo },
-      { path: 'uikit/message', component: MessagesDemo },
-      { path: 'uikit/misc', component: MiscDemo },
-      { path: 'uikit/panel', component: PanelsDemo },
-      { path: 'uikit/timeline', component: TimelineDemo },
-      { path: 'uikit/table', component: TableDemo },
-      { path: 'uikit/overlay', component: OverlayDemo },
-      { path: 'uikit/tree', component: TreeDemo },
-      { path: 'uikit/menu', component: MenuDemo },
     ],
   },
 

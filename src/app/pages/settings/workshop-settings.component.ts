@@ -5,8 +5,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { ButtonModule } from 'primeng/button';
-import { ToastModule } from 'primeng/toast';
-import { MessageService } from 'primeng/api';
+import { AppNotificationService } from '../../common/services/notification.service';
 import { AuthService } from '../../common/services/auth.service';
 
 @Component({
@@ -18,13 +17,9 @@ import { AuthService } from '../../common/services/auth.service';
     InputTextModule,
     PasswordModule,
     ToggleSwitchModule,
-    ButtonModule,
-    ToastModule
+    ButtonModule
   ],
-  providers: [MessageService],
   template: `
-    <p-toast></p-toast>
-
     <div class="max-w-4xl mx-auto flex flex-col gap-6 animate-fade-in">
       <!-- Header -->
       <div class="bg-surface-0 dark:bg-surface-900 p-6 rounded-xl border border-surface-200 dark:border-surface-700 shadow-sm flex items-center justify-between">
@@ -197,7 +192,7 @@ import { AuthService } from '../../common/services/auth.service';
 })
 export class WorkshopSettingsComponent implements OnInit {
   protected authService = inject(AuthService);
-  private messageService = inject(MessageService);
+  private notificationService = inject(AppNotificationService);
 
   // Admin Configuration
   centerName = 'Cycle Service Hub - Main Workshop #01';
@@ -236,28 +231,15 @@ export class WorkshopSettingsComponent implements OnInit {
 
   saveUserSettings(): void {
     if (this.userPassword.newPassword && this.userPassword.newPassword !== this.userPassword.confirmPassword) {
-      this.messageService.add({
-        severity: 'error',
-        summary: 'Password Mismatch',
-        detail: 'New password and confirmation do not match.'
-      });
+      this.notificationService.showError('Password Mismatch', 'New password and confirmation do not match.');
       return;
     }
 
-    this.messageService.add({
-      severity: 'success',
-      summary: 'Preferences Updated',
-      detail: 'Your user profile and settings have been saved.'
-    });
-
+    this.notificationService.showSuccess('Preferences Updated', 'Your user profile and settings have been saved.');
     this.userPassword = { newPassword: '', confirmPassword: '' };
   }
 
   saveAdminSettings(): void {
-    this.messageService.add({
-      severity: 'success',
-      summary: 'Workshop Saved',
-      detail: 'Service center system configuration updated successfully.'
-    });
+    this.notificationService.showSuccess('Workshop Saved', 'Service center system configuration updated successfully.');
   }
 }

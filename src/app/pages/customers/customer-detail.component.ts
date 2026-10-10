@@ -7,6 +7,8 @@ import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { CardModule } from 'primeng/card';
 import { CycleDataService } from '../../services/cycle-data.service';
+import { MiscService } from '../../services/misc.service';
+import { MiscCustomer } from '../../models/api.models';
 import { Customer, Bicycle, ServiceTicket, Appointment, PaymentRecord } from '../../models/cycle-management.models';
 
 @Component({
@@ -307,6 +309,8 @@ export class CustomerDetailComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private dataService = inject(CycleDataService);
 
+  protected miscService = inject(MiscService);
+
   customer: Customer | null = null;
   customerBicycles: Bicycle[] = [];
   customerTickets: ServiceTicket[] = [];
@@ -323,9 +327,23 @@ export class CustomerDetailComponent implements OnInit {
   }
 
   loadCustomer(id: string): void {
+    const miscCust = this.miscService.customers().find(c => c.id === id);
     const cust = this.dataService.customers().find(c => c.id === id);
-    if (cust) {
-      this.customer = cust;
+    if (miscCust || cust) {
+      this.customer = {
+        id: miscCust?.id || cust?.id || id,
+        name: miscCust?.name || cust?.name || 'Customer',
+        phone: miscCust?.phoneNumber || cust?.phone || '',
+        email: miscCust?.email || cust?.email || '',
+        address: miscCust?.address || cust?.address || '',
+        status: cust?.status || 'Active',
+        companyName: cust?.companyName || '',
+        joinDate: cust?.joinDate || '2026',
+        bicyclesCount: cust?.bicyclesCount || 0,
+        activeServicesCount: cust?.activeServicesCount || 0,
+        lastServiceDate: cust?.lastServiceDate || 'N/A',
+        bicycles: cust?.bicycles || []
+      };
       this.customerBicycles = this.dataService.bicycles().filter(b => b.customerId === id);
       this.customerTickets = this.dataService.tickets().filter(t => t.customerId === id);
       this.customerAppointments = this.dataService.appointments().filter(a => a.customerId === id);

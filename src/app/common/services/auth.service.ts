@@ -73,10 +73,11 @@ export class AuthService {
     if (authBaseUrl) {
       return this.http.post<any>(authBaseUrl + `api/auth/login`, payload).pipe(
         map((response) => {
+          console.log(response)
           const token = response.accessToken || response.token || 'auth_jwt_token';
           const rawRole = (response.role || response.user?.role || response.Role || response.userType || 'admin').toLowerCase();
           const role: UserRole = rawRole === 'admin' ? 'admin' : 'user';
-          
+
           const user: AuthUser = {
             name: response.firstName || response.name || response.user?.name || (role === 'admin' ? 'Cycle Center Administrator' : 'Service Staff User'),
             email: response.email || response.user?.email || trimmedInput,
@@ -84,6 +85,7 @@ export class AuthService {
             facility: response.facility || 'Main Service Hub #01',
           };
 
+          console.log("user", user, token)
           return { token, user };
         }),
         tap(({ token, user }) => this.handleAuthSuccess(token, user, remember)),
@@ -114,33 +116,33 @@ export class AuthService {
       (lowerInput === 'user' || lowerInput === 'user@cycleservice.com' || lowerInput === 'staff' || lowerInput.includes('user') || lowerInput.includes('staff') || !lowerInput.includes('admin')) &&
       password.length >= 4;
 
-    if (isAdminUser) {
-      const token = `csc_jwt_token_${Date.now()}_admin`;
-      const user: AuthUser = {
-        username: usernameOrEmail,
-        email: usernameOrEmail.includes('@') ? usernameOrEmail : `${usernameOrEmail}@cycleservice.com`,
-        role: 'admin',
-        name: 'Cycle Center Administrator',
-        facility: 'Main Service Hub #01',
-      };
-
-      this.handleAuthSuccess(token, user, remember);
-      return of({ token, user });
-    } else if (isStandardUser) {
-      const token = `csc_jwt_token_${Date.now()}_user`;
-      const user: AuthUser = {
-        username: usernameOrEmail,
-        email: usernameOrEmail.includes('@') ? usernameOrEmail : `${usernameOrEmail}@cycleservice.com`,
-        role: 'user',
-        name: 'Service Staff User',
-        facility: 'Main Service Hub #01',
-      };
-
-      this.handleAuthSuccess(token, user, remember);
-      return of({ token, user });
-    } else {
-      return throwError(() => new Error('INVALID_CREDENTIALS'));
-    }
+    const baseUrl = this.configService.apiUrl;
+    return this.http.get<{ token: string }>(`${baseUrl}api/test/jwt`).pipe(
+      map((res) => {
+        const token = res.token;
+        const user: AuthUser = {
+          username: usernameOrEmail,
+          email: usernameOrEmail.includes('@') ? usernameOrEmail : `${usernameOrEmail}@cycleservice.com`,
+          role: isAdminUser ? 'admin' : 'user',
+          name: isAdminUser ? 'Cycle Center Administrator' : 'Service Staff User',
+          facility: 'Main Service Hub #01',
+        };
+        // this.handleAuthSuccess(token, user, remember);
+        return { token, user };
+      }),
+      catchError(() => {
+        const token = isAdminUser ? `csc_jwt_token_${Date.now()}_admin` : `csc_jwt_token_${Date.now()}_user`;
+        const user: AuthUser = {
+          username: usernameOrEmail,
+          email: usernameOrEmail.includes('@') ? usernameOrEmail : `${usernameOrEmail}@cycleservice.com`,
+          role: isAdminUser ? 'admin' : 'user',
+          name: isAdminUser ? 'Cycle Center Administrator' : 'Service Staff User',
+          facility: 'Main Service Hub #01',
+        };
+        // this.handleAuthSuccess(token, user, remember);
+        return of({ token, user });
+      })
+    );
   }
 
   private handleAuthSuccess(token: string, user: AuthUser, remember: boolean): void {

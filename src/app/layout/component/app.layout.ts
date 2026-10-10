@@ -2,12 +2,11 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { AppTopbar } from './app.topbar';
-import { AppFooter } from './app.footer';
 
 @Component({
   selector: 'app-layout',
   standalone: true,
-  imports: [CommonModule, AppTopbar, RouterModule, AppFooter],
+  imports: [CommonModule, AppTopbar, RouterModule],
   template: `
     <div class="layout-wrapper">
       <app-topbar></app-topbar>
@@ -15,7 +14,7 @@ import { AppFooter } from './app.footer';
         <main class="layout-main">
           <router-outlet></router-outlet>
         </main>
-        <app-footer></app-footer>
+        <!-- <app-footer></app-footer> -->
       </div>
     </div>
   `,
@@ -55,5 +54,5 @@ import { AppFooter } from './app.footer';
     }
   `]
 })
-export class AppLayout {}
+export class AppLayout { }
 

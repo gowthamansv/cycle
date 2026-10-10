@@ -8,9 +8,8 @@ import { SelectModule } from 'primeng/select';
 import { TagModule } from 'primeng/tag';
 import { ProgressBarModule } from 'primeng/progressbar';
 import { DialogModule } from 'primeng/dialog';
-import { ToastModule } from 'primeng/toast';
 import { TooltipModule } from 'primeng/tooltip';
-import { MessageService } from 'primeng/api';
+import { AppNotificationService } from '../../common/services/notification.service';
 import { CycleDataService } from '../../services/cycle-data.service';
 import { ServiceJob, TicketStatus } from '../../models/cycle-management.models';
 
@@ -27,13 +26,9 @@ import { ServiceJob, TicketStatus } from '../../models/cycle-management.models';
     TagModule,
     ProgressBarModule,
     DialogModule,
-    ToastModule,
     TooltipModule
   ],
-  providers: [MessageService],
   template: `
-    <p-toast></p-toast>
-
     <div class="flex flex-col gap-6">
       <!-- Header -->
       <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-surface-0 dark:bg-surface-900 p-6 rounded-xl border border-surface-200 dark:border-surface-700 shadow-sm">
@@ -53,8 +48,8 @@ import { ServiceJob, TicketStatus } from '../../models/cycle-management.models';
         <div class="col-span-6 sm:col-span-3">
           <div class="card p-3 mb-0 shadow-sm border border-surface-200 dark:border-surface-700 flex items-center justify-between">
             <div>
-              <span class="text-xs text-muted-color uppercase font-semibold">Waiting</span>
-              <div class="text-xl font-bold text-surface-900 dark:text-surface-0">{{ getCountByStatus('Waiting') }}</div>
+              <span class="text-xs text-muted-color uppercase font-semibold">New</span>
+              <div class="text-xl font-bold text-surface-900 dark:text-surface-0">{{ getCountByStatus('New') }}</div>
             </div>
             <div class="w-8 h-8 rounded bg-surface-100 dark:bg-surface-800 flex items-center justify-center text-surface-600 dark:text-surface-300">
               <i class="pi pi-hourglass"></i>
@@ -101,22 +96,8 @@ import { ServiceJob, TicketStatus } from '../../models/cycle-management.models';
 
       <!-- Filters & Toolbar -->
       <div class="card p-4 shadow-sm border border-surface-200 dark:border-surface-700">
-        <div class="grid grid-cols-12 gap-4 items-end">
-          <div class="col-span-12 sm:col-span-6 md:col-span-4">
-            <label class="block text-xs font-semibold text-muted-color uppercase mb-1.5">Search Jobs</label>
-            <div class="relative w-full">
-              <i class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-muted-color"></i>
-              <input
-                pInputText
-                type="text"
-                [(ngModel)]="searchQuery"
-                placeholder="Search job ID, bike model, tech..."
-                class="w-full pl-9"
-              />
-            </div>
-          </div>
-
-          <div class="col-span-12 sm:col-span-6 md:col-span-4">
+        <div class="flex flex-wrap items-end gap-4">
+          <div class="w-full sm:w-64">
             <label class="block text-xs font-semibold text-muted-color uppercase mb-1.5">Status Filter</label>
             <p-select
               [options]="statusOptions"
@@ -127,14 +108,14 @@ import { ServiceJob, TicketStatus } from '../../models/cycle-management.models';
             ></p-select>
           </div>
 
-          <div class="col-span-12 md:col-span-4 flex gap-2">
+          <div class="w-full sm:w-auto">
             <p-button
               label="Reset"
               icon="pi pi-filter-slash"
               [outlined]="true"
               severity="secondary"
-              (click)="searchQuery = ''; selectedStatus = null"
-              styleClass="w-full"
+              (click)="selectedStatus = null"
+              styleClass="w-full sm:w-auto"
             ></p-button>
           </div>
         </div>
@@ -320,9 +301,8 @@ import { ServiceJob, TicketStatus } from '../../models/cycle-management.models';
 })
 export class ServiceJobsListComponent implements OnInit {
   protected dataService = inject(CycleDataService);
-  private messageService = inject(MessageService);
+  private notificationService = inject(AppNotificationService);
 
-  searchQuery = '';
   selectedStatus: string | null = null;
 
   detailVisible = false;
@@ -335,18 +315,12 @@ export class ServiceJobsListComponent implements OnInit {
     { label: 'Completed', value: 'Completed' }
   ];
 
-  ngOnInit(): void {}
+  ngOnInit(): void { }
 
   get filteredJobs(): ServiceJob[] {
     return this.dataService.serviceJobs().filter(job => {
-      const matchesSearch = !this.searchQuery ||
-        job.id.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-        job.customerName.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-        job.bicycleModel.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-        job.technicianName.toLowerCase().includes(this.searchQuery.toLowerCase());
-
       const matchesStatus = !this.selectedStatus || job.status === this.selectedStatus;
-      return matchesSearch && matchesStatus;
+      return matchesStatus;
     });
   }
 
@@ -359,8 +333,8 @@ export class ServiceJobsListComponent implements OnInit {
       case 'Completed': return 'success';
       case 'In Progress': return 'warn';
       case 'Assigned': return 'info';
-      case 'Waiting': return 'secondary';
       case 'Cancelled': return 'danger';
+      case 'New': return "info";
       default: return 'info';
     }
   }
@@ -372,16 +346,12 @@ export class ServiceJobsListComponent implements OnInit {
 
   advanceStatus(job: ServiceJob): void {
     let next: TicketStatus = 'Completed';
-    if (job.status === 'Waiting') next = 'Assigned';
+    if (job.status === 'New') next = 'Assigned';
     else if (job.status === 'Assigned') next = 'In Progress';
     else if (job.status === 'In Progress') next = 'Completed';
 
     this.dataService.updateJobStatus(job.id, next);
     job.status = next;
-    this.messageService.add({
-      severity: 'success',
-      summary: 'Job Updated',
-      detail: `Job ${job.id} transitioned to "${next}".`
-    });
+    this.notificationService.showApiSuccess('UPDATE', 'Service Job', `Job #${job.id} transitioned to "${next}".`);
   }
 }

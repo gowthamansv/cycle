@@ -12,7 +12,8 @@ export interface ThemeSettings {
   primaryColor: string;
 }
 
-const STORAGE_KEY = 'bicycle_theme_settings';
+const THEME_STORAGE_KEY = 'cycle-theme';
+const SETTINGS_STORAGE_KEY = 'bicycle_theme_settings';
 
 @Injectable({
   providedIn: 'root',
@@ -34,49 +35,87 @@ export class ThemeService {
   }
 
   /**
-   * Initializes theme on app startup from localStorage or defaults
+   * Initializes theme on app startup from localStorage or defaults to dark
    */
   initTheme(): void {
+    this.initializeTheme();
+  }
+
+  initializeTheme(): void {
     if (!isPlatformBrowser(this.platformId)) {
       return;
     }
 
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed: ThemeSettings = JSON.parse(saved);
-        const mode = parsed.themeMode === 'light' ? 'light' : 'dark';
-        const color = PRIMARY_COLOR_PALETTES[parsed.primaryColor]
-          ? parsed.primaryColor
-          : 'orange';
+    let resolvedMode: 'light' | 'dark' = 'dark';
+    let resolvedColor = 'orange';
 
-        this.applyThemeMode(mode);
-        this.applyPrimaryColor(color);
-        return;
+    try {
+      // 1. Check primary key 'cycle-theme'
+      const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+      if (savedTheme === 'light' || savedTheme === 'dark') {
+        resolvedMode = savedTheme;
+      } else {
+        // Fallback to legacy settings key
+        const savedSettings = localStorage.getItem(SETTINGS_STORAGE_KEY);
+        if (savedSettings) {
+          const parsed: ThemeSettings = JSON.parse(savedSettings);
+          if (parsed.themeMode === 'light') {
+            resolvedMode = 'light';
+          }
+          if (parsed.primaryColor && PRIMARY_COLOR_PALETTES[parsed.primaryColor]) {
+            resolvedColor = parsed.primaryColor;
+          }
+        }
+      }
+
+      // Check color settings if exists
+      const savedSettings = localStorage.getItem(SETTINGS_STORAGE_KEY);
+      if (savedSettings) {
+        const parsed: ThemeSettings = JSON.parse(savedSettings);
+        if (parsed.primaryColor && PRIMARY_COLOR_PALETTES[parsed.primaryColor]) {
+          resolvedColor = parsed.primaryColor;
+        }
       }
     } catch (e) {
       console.warn('Could not read saved theme settings from localStorage:', e);
+      resolvedMode = 'dark';
     }
 
-    // Default: Dark mode + Orange primary
-    this.applyThemeMode('dark');
-    this.applyPrimaryColor('orange');
+    // Apply resolved mode and primary color
+    this.applyThemeMode(resolvedMode);
+    this.applyPrimaryColor(resolvedColor);
+    this.saveSettings();
   }
 
   /**
-   * Sets theme mode ('light' | 'dark') and saves to storage
+   * Sets theme ('dark' | 'light') and persists preference
    */
+  setTheme(mode: 'light' | 'dark'): void {
+    this.setThemeMode(mode);
+  }
+
   setThemeMode(mode: 'light' | 'dark'): void {
     this.applyThemeMode(mode);
     this.saveSettings();
   }
 
   /**
-   * Toggles between light and dark mode
+   * Toggles between dark and light mode
    */
+  toggleTheme(): void {
+    this.toggleThemeMode();
+  }
+
   toggleThemeMode(): void {
     const nextMode = this.themeMode() === 'dark' ? 'light' : 'dark';
     this.setThemeMode(nextMode);
+  }
+
+  /**
+   * Returns current active theme ('dark' | 'light')
+   */
+  getCurrentTheme(): 'light' | 'dark' {
+    return this.themeMode();
   }
 
   /**
@@ -167,11 +206,12 @@ export class ThemeService {
     }
 
     try {
+      localStorage.setItem(THEME_STORAGE_KEY, this.themeMode());
       const settings: ThemeSettings = {
         themeMode: this.themeMode(),
         primaryColor: this.primaryColor(),
       };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
     } catch (e) {
       console.warn('Could not save theme settings to localStorage:', e);
     }

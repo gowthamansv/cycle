@@ -36,13 +36,6 @@ import { TodayScheduleWidget } from './today-schedule.component';
 
         <div class="flex items-center gap-3">
           <p-button
-            label="+ New Appointment"
-            icon="pi pi-calendar-plus"
-            [outlined]="true"
-            routerLink="/appointments/new"
-            size="small"
-          ></p-button>
-          <p-button
             label="+ Add Service"
             icon="pi pi-wrench"
             routerLink="/services/new"
@@ -71,4 +64,4 @@ import { TodayScheduleWidget } from './today-schedule.component';
     </div>
   `
 })
-export class ServiceDashboardComponent {}
+export class ServiceDashboardComponent { }

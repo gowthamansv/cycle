@@ -2,10 +2,38 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>AdminCy</title>
+  <title>Cycle Service Center | Admin Portal</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <script>
+    (function() {
+      try {
+        var savedTheme = localStorage.getItem('cycle-theme');
+        if (!savedTheme) {
+          var legacy = localStorage.getItem('bicycle_theme_settings');
+          if (legacy) {
+            try {
+              savedTheme = JSON.parse(legacy).themeMode;
+            } catch (e) {}
+          }
+        }
+        var mode = (savedTheme === 'light') ? 'light' : 'dark';
+        var htmlEl = document.documentElement;
+        if (mode === 'dark') {
+          htmlEl.classList.add('app-dark', 'dark');
+          htmlEl.setAttribute('data-theme', 'dark');
+          htmlEl.style.colorScheme = 'dark';
+        } else {
+          htmlEl.classList.remove('app-dark', 'dark');
+          htmlEl.setAttribute('data-theme', 'light');
+          htmlEl.style.colorScheme = 'light';
+        }
+      } catch (err) {
+        document.documentElement.classList.add('app-dark', 'dark');
+      }
+    })();
+  </script>
 </head>
 <body>
   <app-root></app-root>

@@ -6,13 +6,18 @@ import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
+import { MultiSelectModule } from 'primeng/multiselect';
 import { TagModule } from 'primeng/tag';
 import { DialogModule } from 'primeng/dialog';
-import { ToastModule } from 'primeng/toast';
 import { TooltipModule } from 'primeng/tooltip';
-import { MessageService } from 'primeng/api';
+import { MessageModule } from 'primeng/message';
 import { CycleDataService } from '../../services/cycle-data.service';
 import { Technician, TechnicianAvailability } from '../../models/cycle-management.models';
+import { UserService } from '../../services/user.service';
+import { MiscService } from '../../services/misc.service';
+import { AuthService } from '../../common/services/auth.service';
+import { AppNotificationService } from '../../common/services/notification.service';
+import { CreateUserRequest } from '../../models/api.models';
 
 @Component({
   selector: 'app-technicians-list',
@@ -25,15 +30,13 @@ import { Technician, TechnicianAvailability } from '../../models/cycle-managemen
     ButtonModule,
     InputTextModule,
     SelectModule,
+    MultiSelectModule,
     TagModule,
     DialogModule,
-    ToastModule,
-    TooltipModule
+    TooltipModule,
+    MessageModule
   ],
-  providers: [MessageService],
   template: `
-    <p-toast></p-toast>
-
     <div class="flex flex-col gap-6">
       <!-- Header -->
       <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-surface-0 dark:bg-surface-900 p-6 rounded-xl border border-surface-200 dark:border-surface-700 shadow-sm">
@@ -45,6 +48,14 @@ import { Technician, TechnicianAvailability } from '../../models/cycle-managemen
             </span>
           </div>
           <p class="text-sm text-muted-color mt-1">Manage workshop staff, mechanical specializations, certifications and active queue capacities.</p>
+        </div>
+
+        <div class="flex items-center gap-3" *ngIf="authService.isAdmin()">
+          <p-button
+            label="+ Add Staff / User"
+            icon="pi pi-user-plus"
+            (click)="openAddUserModal()"
+          ></p-button>
         </div>
       </div>
 
@@ -200,13 +211,126 @@ import { Technician, TechnicianAvailability } from '../../models/cycle-managemen
         </p-table>
       </div>
     </div>
+
+    <!-- Add Staff / User Modal (Live Backend POST /api/users) -->
+    <p-dialog
+      [(visible)]="addUserDialogVisible"
+      header="Register New Staff / User (Backend Linked)"
+      [modal]="true"
+      [style]="{ width: '90vw', maxWidth: '560px' }"
+      [draggable]="false"
+    >
+      <div class="space-y-4 pt-2">
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-muted-color uppercase mb-1">First Name *</label>
+            <input pInputText [(ngModel)]="newUser.firstName" placeholder="Jane" class="w-full" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-muted-color uppercase mb-1">Last Name *</label>
+            <input pInputText [(ngModel)]="newUser.lastName" placeholder="Smith" class="w-full" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-muted-color uppercase mb-1">Email Address *</label>
+            <input pInputText type="email" [(ngModel)]="newUser.email" placeholder="jane.smith@freewheel.com" class="w-full" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-muted-color uppercase mb-1">Phone Number *</label>
+            <input pInputText [(ngModel)]="newUser.phoneNumber" placeholder="+1 (555) 999-8888" class="w-full" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-muted-color uppercase mb-1">Password</label>
+          <input pInputText type="password" [(ngModel)]="newUser.password" placeholder="Temporary password" class="w-full" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-muted-color uppercase mb-1">Roles (from /api/misc/roles) *</label>
+          <p-multiselect
+            [options]="roleOptions"
+            [(ngModel)]="newUser.roleIds"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Select Roles"
+            styleClass="w-full"
+          ></p-multiselect>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-muted-color uppercase mb-1">Groups / Departments (from /api/misc/groups)</label>
+          <p-multiselect
+            [options]="groupOptions"
+            [(ngModel)]="newUser.groupIds"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Select Workshop Groups"
+            styleClass="w-full"
+          ></p-multiselect>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <p-button label="Cancel" severity="secondary" [outlined]="true" [disabled]="isSubmitting" (click)="addUserDialogVisible = false"></p-button>
+          <p-button label="Create User" icon="pi pi-check" [loading]="isSubmitting" (click)="saveUser()"></p-button>
+        </div>
+      </div>
+    </p-dialog>
   `
 })
 export class TechniciansListComponent implements OnInit {
   protected dataService = inject(CycleDataService);
-  private messageService = inject(MessageService);
+  protected userService = inject(UserService);
+  protected miscService = inject(MiscService);
+  protected authService = inject(AuthService);
+  private notificationService = inject(AppNotificationService);
 
-  ngOnInit(): void {}
+  addUserDialogVisible = false;
+  isSubmitting = false;
+
+  newUser = {
+    firstName: '',
+    lastName: '',
+    email: '',
+    phoneNumber: '',
+    password: '',
+    roleIds: [] as string[],
+    groupIds: [] as string[]
+  };
+
+  roleOptions: { label: string; value: string }[] = [];
+  groupOptions: { label: string; value: string }[] = [];
+
+  ngOnInit(): void {
+    this.loadLookups();
+  }
+
+  private loadLookups(): void {
+    this.miscService.getRoles().subscribe({
+      next: (roles) => {
+        this.roleOptions = roles.map(r => ({ label: r.name, value: r.id }));
+        if (this.roleOptions.length > 0 && this.newUser.roleIds.length === 0) {
+          this.newUser.roleIds = [this.roleOptions[0].value];
+        }
+      },
+      error: () => {
+        this.roleOptions = [
+          { label: 'Admin', value: 'c90538a7-7be6-4443-8ce0-ebfe701fa001' },
+          { label: 'Employee', value: 'c90538a7-7be6-4443-8ce0-ebfe701fa002' },
+          { label: 'User', value: 'c90538a7-7be6-4443-8ce0-ebfe701fa003' }
+        ];
+      }
+    });
+
+    this.miscService.getGroups().subscribe({
+      next: (groups) => {
+        this.groupOptions = groups.map(g => ({ label: g.name, value: g.id }));
+      },
+      error: () => {}
+    });
+  }
 
   get filteredTechnicians(): Technician[] {
     return this.dataService.technicians();
@@ -233,10 +357,63 @@ export class TechniciansListComponent implements OnInit {
 
     this.dataService.updateTechnicianStatus(tech.id, next);
     tech.availability = next;
-    this.messageService.add({
-      severity: 'info',
-      summary: 'Status Updated',
-      detail: `${tech.name} marked as "${next}".`
+    this.notificationService.showInfo(
+      'Status Updated',
+      `${tech.name} marked as "${next}".`
+    );
+  }
+
+  openAddUserModal(): void {
+    this.newUser = {
+      firstName: '',
+      lastName: '',
+      email: '',
+      phoneNumber: '',
+      password: '',
+      roleIds: this.roleOptions.length > 0 ? [this.roleOptions[0].value] : [],
+      groupIds: []
+    };
+    this.addUserDialogVisible = true;
+  }
+
+  saveUser(): void {
+    if (!this.newUser.firstName.trim() || !this.newUser.email.trim() || !this.newUser.phoneNumber.trim()) {
+      this.notificationService.showWarning(
+        'Incomplete Details',
+        'First Name, Email, and Phone Number are required.'
+      );
+      return;
+    }
+
+    this.isSubmitting = true;
+    const reqPayload: CreateUserRequest = {
+      firstName: this.newUser.firstName.trim(),
+      lastName: this.newUser.lastName.trim(),
+      email: this.newUser.email.trim(),
+      phoneNumber: this.newUser.phoneNumber.trim(),
+      password: this.newUser.password.trim() || 'Temporary123!',
+      roleIds: this.newUser.roleIds,
+      groupIds: this.newUser.groupIds
+    };
+
+    this.userService.createUser(reqPayload).subscribe({
+      next: (res) => {
+        this.isSubmitting = false;
+        this.addUserDialogVisible = false;
+
+        this.notificationService.showApiSuccess(
+          'create',
+          'Staff User',
+          `Staff member ${this.newUser.firstName} ${this.newUser.lastName} registered successfully on backend!`
+        );
+
+        // Refresh user lookups
+        this.miscService.getUsers().subscribe();
+      },
+      error: (err) => {
+        this.isSubmitting = false;
+        this.notificationService.handleApiError('create staff user', err);
+      }
     });
   }
 }

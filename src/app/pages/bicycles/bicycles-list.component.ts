@@ -8,12 +8,15 @@ import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { TagModule } from 'primeng/tag';
 import { DialogModule } from 'primeng/dialog';
-import { ToastModule } from 'primeng/toast';
 import { TooltipModule } from 'primeng/tooltip';
-import { MessageService } from 'primeng/api';
+import { MessageModule } from 'primeng/message';
 import { CycleDataService } from '../../services/cycle-data.service';
 import { Bicycle, BicycleType } from '../../models/cycle-management.models';
 import { AuthService } from '../../common/services/auth.service';
+import { CycleService } from '../../services/cycle.service';
+import { MiscService } from '../../services/misc.service';
+import { AppNotificationService } from '../../common/services/notification.service';
+import { CreateCycleRequest } from '../../models/api.models';
 
 @Component({
   selector: 'app-bicycles-list',
@@ -28,13 +31,10 @@ import { AuthService } from '../../common/services/auth.service';
     SelectModule,
     TagModule,
     DialogModule,
-    ToastModule,
-    TooltipModule
+    TooltipModule,
+    MessageModule
   ],
-  providers: [MessageService],
   template: `
-    <p-toast></p-toast>
-
     <!-- ============================================================= -->
     <!-- USER ROLE: DIRECT CREATE BICYCLE INTERFACE                    -->
     <!-- ============================================================= -->
@@ -44,11 +44,11 @@ import { AuthService } from '../../common/services/auth.service';
         <div>
           <div class="flex items-center gap-2">
             <h1 class="text-2xl font-bold text-surface-900 dark:text-surface-0 tracking-tight">Create Bicycle</h1>
-            <span class="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-orange-100 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300">
-              Fleet Registration
+            <span class="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
+              API Live (POST /api/cycles)
             </span>
           </div>
-          <p class="text-sm text-muted-color mt-1">Register a new bicycle profile linked to a rider account.</p>
+          <p class="text-sm text-muted-color mt-1">Register a new bicycle profile linked to a rider account into backend database.</p>
         </div>
       </div>
 
@@ -94,7 +94,7 @@ import { AuthService } from '../../common/services/auth.service';
             <input pInputText type="date" [(ngModel)]="userBikeForm.purchaseDate" class="w-full" />
           </div>
           <div>
-            <label class="block text-xs font-semibold text-muted-color uppercase mb-1.5">Serial Number</label>
+            <label class="block text-xs font-semibold text-muted-color uppercase mb-1.5">Serial Number *</label>
             <input pInputText [(ngModel)]="userBikeForm.serialNumber" placeholder="SN-998811" class="w-full" />
           </div>
         </div>
@@ -110,11 +110,13 @@ import { AuthService } from '../../common/services/auth.service';
             label="Cancel" 
             severity="secondary" 
             [outlined]="true" 
+            [disabled]="isSubmitting"
             (click)="cancelUserCreate()"
           ></p-button>
           <p-button 
             label="Create Bicycle" 
             icon="pi pi-check" 
+            [loading]="isSubmitting"
             (click)="saveUserBicycle()"
           ></p-button>
         </div>
@@ -131,7 +133,7 @@ import { AuthService } from '../../common/services/auth.service';
           <div class="flex items-center gap-2">
             <h1 class="text-2xl font-bold text-surface-900 dark:text-surface-0 tracking-tight">Bicycle Fleet</h1>
             <span class="text-xs px-2.5 py-1 rounded-full font-semibold bg-orange-100 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300">
-              {{ filteredBicycles.length }} Registered Bikes
+              Bicycle Management
             </span>
           </div>
           <p class="text-sm text-muted-color mt-1">Manage bicycle inventory, frame numbers, component specifications, and service intervals.</p>
@@ -146,24 +148,24 @@ import { AuthService } from '../../common/services/auth.service';
         </div>
       </div>
 
-      <!-- Search & Filters -->
-      <div class="card p-4 shadow-sm border border-surface-200 dark:border-surface-700">
-        <div class="grid grid-cols-12 gap-4 items-end">
-          <div class="col-span-12 sm:col-span-6 md:col-span-4">
-            <label class="block text-xs font-semibold text-muted-color uppercase mb-1.5">Search Fleet</label>
-            <div class="relative w-full">
-              <i class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-muted-color"></i>
-              <input
-                pInputText
-                type="text"
-                [(ngModel)]="searchQuery"
-                placeholder="Search brand, model, serial, frame #..."
-                class="w-full pl-9"
-              />
-            </div>
+      <!-- Explicit Backend API Status Notice as per requirements -->
+      <div class="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex items-start gap-3">
+        <i class="pi pi-exclamation-triangle text-amber-600 text-lg mt-0.5"></i>
+        <div>
+          <div class="text-sm font-bold text-amber-900 dark:text-amber-200">
+            Backend API Notice: GET /api/cycles is not available
           </div>
+          <div class="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
+            The backend currently provides <code>POST /api/cycles</code> (create bicycle) and <code>GET /api/cycles/&#123;id&#125;/service-info</code> (service history).
+            The bicycle listing table below is structurally prepared for future GET endpoint release.
+          </div>
+        </div>
+      </div>
 
-          <div class="col-span-12 sm:col-span-6 md:col-span-3">
+      <!-- Filters -->
+      <div class="card p-4 shadow-sm border border-surface-200 dark:border-surface-700">
+        <div class="flex flex-wrap items-end gap-4">
+          <div class="w-full sm:w-64">
             <label class="block text-xs font-semibold text-muted-color uppercase mb-1.5">Bicycle Type</label>
             <p-select
               [options]="typeOptions"
@@ -174,7 +176,7 @@ import { AuthService } from '../../common/services/auth.service';
             ></p-select>
           </div>
 
-          <div class="col-span-12 sm:col-span-6 md:col-span-3">
+          <div class="w-full sm:w-64">
             <label class="block text-xs font-semibold text-muted-color uppercase mb-1.5">Status</label>
             <p-select
               [options]="statusOptions"
@@ -185,20 +187,20 @@ import { AuthService } from '../../common/services/auth.service';
             ></p-select>
           </div>
 
-          <div class="col-span-12 md:col-span-2 flex gap-2">
+          <div class="w-full sm:w-auto">
             <p-button
               label="Reset"
               icon="pi pi-filter-slash"
               [outlined]="true"
               severity="secondary"
-              (click)="searchQuery = ''; selectedType = null; selectedStatus = null"
-              styleClass="w-full"
+              (click)="selectedType = null; selectedStatus = null"
+              styleClass="w-full sm:w-auto"
             ></p-button>
           </div>
         </div>
       </div>
 
-      <!-- Bicycles Table with distinct column styling -->
+      <!-- Bicycles Table Prepared for GET Integration -->
       <div class="card p-0 shadow-sm border border-surface-200 dark:border-surface-700 overflow-hidden">
         <p-table
           [value]="filteredBicycles"
@@ -294,7 +296,8 @@ import { AuthService } from '../../common/services/auth.service';
             <tr>
               <td colspan="9" class="text-center p-8 text-muted-color">
                 <i class="pi pi-compass text-4xl mb-3 block text-surface-400"></i>
-                No bicycles found matching filter conditions.
+                <div>No bicycles in view.</div>
+                <div class="text-xs text-muted-color mt-1">Ready for GET /api/cycles backend endpoint release.</div>
               </td>
             </tr>
           </ng-template>
@@ -302,10 +305,10 @@ import { AuthService } from '../../common/services/auth.service';
       </div>
     </div>
 
-    <!-- Add Bicycle Modal (Admin Only) -->
+    <!-- Add Bicycle Modal (Admin Only - Live POST /api/cycles) -->
     <p-dialog
       [(visible)]="addDialogVisible"
-      header="Register New Bicycle"
+      header="Register New Bicycle (Backend Linked)"
       [modal]="true"
       [style]="{ width: '90vw', maxWidth: '600px' }"
       [draggable]="false"
@@ -368,8 +371,8 @@ import { AuthService } from '../../common/services/auth.service';
         </div>
 
         <div class="flex justify-end gap-2 pt-2">
-          <p-button label="Cancel" severity="secondary" [outlined]="true" (click)="addDialogVisible = false"></p-button>
-          <p-button label="Register Bicycle" icon="pi pi-check" (click)="saveBicycle()"></p-button>
+          <p-button label="Cancel" severity="secondary" [outlined]="true" [disabled]="isSubmitting" (click)="addDialogVisible = false"></p-button>
+          <p-button label="Register Bicycle" icon="pi pi-check" [loading]="isSubmitting" (click)="saveBicycle()"></p-button>
         </div>
       </div>
     </p-dialog>
@@ -378,12 +381,14 @@ import { AuthService } from '../../common/services/auth.service';
 export class BicyclesListComponent implements OnInit {
   protected dataService = inject(CycleDataService);
   protected authService = inject(AuthService);
-  private messageService = inject(MessageService);
+  protected cycleService = inject(CycleService);
+  protected miscService = inject(MiscService);
+  private notificationService = inject(AppNotificationService);
   private router = inject(Router);
 
-  searchQuery = '';
   selectedType: BicycleType | null = null;
   selectedStatus: string | null = null;
+  isSubmitting = false;
 
   // Direct User Form Model
   userBikeForm = {
@@ -441,81 +446,112 @@ export class BicyclesListComponent implements OnInit {
   }
 
   private refreshCustomerOptions(): void {
-    const custs = this.dataService.customers();
-    this.customerOptions = custs.map(c => ({
-      label: `${c.name} (${c.phone})`,
-      value: c.id
-    }));
-    if (custs.length > 0 && !this.userBikeForm.customerId) {
-      this.userBikeForm.customerId = custs[0].id;
-    }
+    this.miscService.getCustomers().subscribe({
+      next: (custs) => {
+        if (custs && custs.length > 0) {
+          this.customerOptions = custs.map(c => ({
+            label: `${c.name} (${c.phoneNumber || 'No Phone'})`,
+            value: c.id
+          }));
+        } else {
+          this.customerOptions = this.dataService.customers().map(c => ({
+            label: `${c.name} (${c.phone})`,
+            value: c.id
+          }));
+        }
+        if (this.customerOptions.length > 0 && !this.userBikeForm.customerId) {
+          this.userBikeForm.customerId = this.customerOptions[0].value;
+        }
+      },
+      error: () => {
+        this.customerOptions = this.dataService.customers().map(c => ({
+          label: `${c.name} (${c.phone})`,
+          value: c.id
+        }));
+        if (this.customerOptions.length > 0 && !this.userBikeForm.customerId) {
+          this.userBikeForm.customerId = this.customerOptions[0].value;
+        }
+      }
+    });
   }
 
   get filteredBicycles(): Bicycle[] {
     return this.dataService.bicycles().filter(b => {
-      const matchesSearch = !this.searchQuery ||
-        b.brand.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-        b.model.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-        b.serialNumber.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-        b.frameNumber.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-        b.customerName.toLowerCase().includes(this.searchQuery.toLowerCase());
-
       const matchesType = !this.selectedType || b.type === this.selectedType;
       const matchesStatus = !this.selectedStatus || b.status === this.selectedStatus;
 
-      return matchesSearch && matchesType && matchesStatus;
+      return matchesType && matchesStatus;
     });
   }
 
-  // User Actions
+  // User Actions (Live Backend POST /api/cycles)
   saveUserBicycle(): void {
     if (!this.userBikeForm.brand.trim() || !this.userBikeForm.model.trim() || !this.userBikeForm.customerId) {
-      this.messageService.add({
-        severity: 'warn',
-        summary: 'Missing Fields',
-        detail: 'Owner, Brand, and Model are required.'
-      });
+      this.notificationService.showWarning(
+        'Missing Fields',
+        'Owner, Brand, and Model are required.'
+      );
       return;
     }
 
-    const cust = this.dataService.customers().find(c => c.id === this.userBikeForm.customerId);
-    const customerName = cust ? cust.name : 'Registered Rider';
+    const serial = this.userBikeForm.serialNumber.trim() || `SN-${Math.floor(100000 + Math.random() * 900000)}`;
+    const fullModel = `${this.userBikeForm.brand.trim()} ${this.userBikeForm.model.trim()}`.trim();
 
-    const created = this.dataService.addBicycle({
-      name: `${this.userBikeForm.brand.trim()} ${this.userBikeForm.model.trim()}`,
-      brand: this.userBikeForm.brand.trim(),
-      model: this.userBikeForm.model.trim(),
-      type: this.userBikeForm.type,
+    this.isSubmitting = true;
+    const reqPayload: CreateCycleRequest = {
       customerId: this.userBikeForm.customerId,
-      customerName: customerName,
-      frameNumber: this.userBikeForm.frameNumber.trim() || `FRM-${Math.floor(10000 + Math.random() * 90000)}`,
-      serialNumber: this.userBikeForm.serialNumber.trim() || `SN-${Math.floor(100000 + Math.random() * 900000)}`,
-      purchaseDate: this.userBikeForm.purchaseDate || '2026-09-20',
-      status: 'Good',
-      lastServiceDate: '2026-09-20',
-      nextServiceDate: '2027-03-20',
-      gearSystem: 'Standard',
-      color: 'Default',
-      notes: this.userBikeForm.notes.trim()
-    });
-
-    this.messageService.add({
-      severity: 'success',
-      summary: 'Bicycle Created',
-      detail: `${created.brand} ${created.model} added to workshop garage.`
-    });
-
-    // Reset user form
-    this.userBikeForm = {
-      customerId: this.customerOptions.length > 0 ? this.customerOptions[0].value : '',
-      brand: '',
-      model: '',
-      type: 'Road',
-      frameNumber: '',
-      serialNumber: '',
-      purchaseDate: '2026-09-20',
-      notes: ''
+      model: fullModel,
+      serialNumber: serial
     };
+
+    this.cycleService.createCycle(reqPayload).subscribe({
+      next: (res) => {
+        this.isSubmitting = false;
+
+        const cust = this.dataService.customers().find(c => c.id === this.userBikeForm.customerId);
+        const customerName = cust ? cust.name : 'Registered Rider';
+
+        this.dataService.addBicycle({
+          name: fullModel,
+          brand: this.userBikeForm.brand.trim(),
+          model: this.userBikeForm.model.trim(),
+          type: this.userBikeForm.type,
+          customerId: this.userBikeForm.customerId,
+          customerName: customerName,
+          frameNumber: this.userBikeForm.frameNumber.trim() || `FRM-${Math.floor(10000 + Math.random() * 90000)}`,
+          serialNumber: serial,
+          purchaseDate: this.userBikeForm.purchaseDate || '2026-09-20',
+          status: 'Good',
+          lastServiceDate: '2026-09-20',
+          nextServiceDate: '2027-03-20',
+          gearSystem: 'Standard',
+          color: 'Default',
+          notes: this.userBikeForm.notes.trim()
+        });
+
+        this.notificationService.showApiSuccess(
+          'create',
+          'Bicycle',
+          `${fullModel} registered successfully.`
+        );
+
+        // Reset user form
+        this.userBikeForm = {
+          customerId: this.customerOptions.length > 0 ? this.customerOptions[0].value : '',
+          brand: '',
+          model: '',
+          type: 'Road',
+          frameNumber: '',
+          serialNumber: '',
+          purchaseDate: '2026-09-20',
+          notes: ''
+        };
+      },
+      error: (err) => {
+        this.isSubmitting = false;
+        this.notificationService.handleApiError('create bicycle', err);
+      }
+    });
   }
 
   cancelUserCreate(): void {
@@ -524,7 +560,7 @@ export class BicyclesListComponent implements OnInit {
 
   // Admin Actions
   openAddModal(): void {
-    const custs = this.dataService.customers();
+    const custs = this.customerOptions;
     this.newBike = {
       name: '',
       brand: '',
@@ -532,8 +568,8 @@ export class BicyclesListComponent implements OnInit {
       type: 'Road',
       frameNumber: `FRM-${Math.floor(10000 + Math.random() * 90000)}`,
       serialNumber: `SN-${Math.floor(100000 + Math.random() * 900000)}`,
-      customerId: custs.length > 0 ? custs[0].id : '',
-      customerName: custs.length > 0 ? custs[0].name : '',
+      customerId: custs.length > 0 ? custs[0].value : '',
+      customerName: '',
       purchaseDate: '2026-09-20',
       status: 'Good',
       lastServiceDate: '2026-09-20',
@@ -547,29 +583,48 @@ export class BicyclesListComponent implements OnInit {
 
   saveBicycle(): void {
     if (!this.newBike.brand || !this.newBike.model || !this.newBike.customerId) {
-      this.messageService.add({
-        severity: 'warn',
-        summary: 'Incomplete',
-        detail: 'Brand, Model and Customer are required.'
-      });
+      this.notificationService.showWarning(
+        'Incomplete Form',
+        'Brand, Model and Customer are required.'
+      );
       return;
     }
 
-    const cust = this.dataService.customers().find(c => c.id === this.newBike.customerId);
-    if (cust) {
-      this.newBike.customerName = cust.name;
-    }
+    const fullModel = `${this.newBike.brand.trim()} ${this.newBike.model.trim()}`.trim();
+    const serial = this.newBike.serialNumber.trim() || `SN-${Math.floor(100000 + Math.random() * 900000)}`;
 
-    const created = this.dataService.addBicycle({
-      ...this.newBike,
-      name: `${this.newBike.brand} ${this.newBike.model}`
-    });
+    this.isSubmitting = true;
+    const reqPayload: CreateCycleRequest = {
+      customerId: this.newBike.customerId,
+      model: fullModel,
+      serialNumber: serial
+    };
 
-    this.addDialogVisible = false;
-    this.messageService.add({
-      severity: 'success',
-      summary: 'Bicycle Registered',
-      detail: `${created.brand} ${created.model} added to garage.`
+    this.cycleService.createCycle(reqPayload).subscribe({
+      next: (res) => {
+        this.isSubmitting = false;
+        const cust = this.dataService.customers().find(c => c.id === this.newBike.customerId);
+        if (cust) {
+          this.newBike.customerName = cust.name;
+        }
+
+        this.dataService.addBicycle({
+          ...this.newBike,
+          name: fullModel
+        });
+
+        this.addDialogVisible = false;
+        this.notificationService.showApiSuccess(
+          'create',
+          'Bicycle',
+          `${fullModel} registered successfully.`
+        );
+      },
+      error: (err) => {
+        this.isSubmitting = false;
+        this.notificationService.handleApiError('register bicycle', err);
+      }
     });
   }
 }
+

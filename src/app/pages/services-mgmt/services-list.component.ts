@@ -1,34 +1,33 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { RouterModule, Router } from '@angular/router';
+import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { RouterModule } from '@angular/router';
 import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { TagModule } from 'primeng/tag';
 import { DialogModule } from 'primeng/dialog';
-import { ConfirmDialogModule } from 'primeng/confirmdialog';
-import { ToastModule } from 'primeng/toast';
-import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { TooltipModule } from 'primeng/tooltip';
-import { DrawerModule } from 'primeng/drawer';
-import { ProgressBarModule } from 'primeng/progressbar';
-import { ConfirmationService, MessageService } from 'primeng/api';
+import { TextareaModule } from 'primeng/textarea';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
+import { MessageModule } from 'primeng/message';
+
+import QRCode from 'qrcode';
+import { TicketService } from '../../services/ticket.service';
+import { MiscService } from '../../services/misc.service';
 import { CycleDataService } from '../../services/cycle-data.service';
-import { FreewheelCatalogService } from '../../services/freewheel-catalog.service';
+import { AppConfigService } from '../../app.config.service';
+import { AppNotificationService } from '../../common/services/notification.service';
 import {
-  ServiceTicket,
-  TicketStatus,
-  TicketPriority,
-  ServiceCatalogItem,
-  ServiceDepartment,
-  BicycleType,
-  DigitalBicyclePassport,
-  DigitalHealthStatus,
-  ComponentHealthItem
-} from '../../models/cycle-management.models';
-import { AuthService } from '../../common/services/auth.service';
+  TicketResponseDto,
+  UpdateTicketRequest,
+  CreateTicketRequest,
+  MiscStatus,
+  MiscPriority,
+  MiscUser,
+  MiscCustomer
+} from '../../models/api.models';
 
 @Component({
   selector: 'app-services-list',
@@ -36,6 +35,7 @@ import { AuthService } from '../../common/services/auth.service';
   imports: [
     CommonModule,
     FormsModule,
+    ReactiveFormsModule,
     RouterModule,
     TableModule,
     ButtonModule,
@@ -43,1203 +43,1458 @@ import { AuthService } from '../../common/services/auth.service';
     SelectModule,
     TagModule,
     DialogModule,
-    ConfirmDialogModule,
-    ToastModule,
-    ToggleSwitchModule,
     TooltipModule,
-    DrawerModule,
-    ProgressBarModule
+    TextareaModule,
+    ProgressSpinnerModule,
+    MessageModule
   ],
-  providers: [ConfirmationService, MessageService],
   template: `
-    <p-toast></p-toast>
-    <p-confirmdialog></p-confirmdialog>
+    <div class="flex flex-col gap-6 max-w-[1600px] mx-auto pb-10">
 
-    <div class="flex flex-col gap-6">
-      <!-- Top Brand & Navigation Header -->
-      <div class="bg-gradient-to-r from-surface-900 via-surface-800 to-orange-950 p-6 md:p-8 rounded-2xl border border-surface-700 shadow-xl text-white">
-        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-          <div>
-            <div class="flex items-center gap-2 mb-2">
-              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-orange-500/20 text-orange-400 border border-orange-500/30">
-                ⚙️ FREEWHEEL FACTORY
-              </span>
-              <span class="text-xs text-surface-400 font-mono">Standard Operating System v2.6</span>
-            </div>
-            <h1 class="text-3xl font-extrabold tracking-tight text-white flex items-center gap-3">
-              Master Service & Engineering Lab
-            </h1>
-            <p class="text-sm text-surface-300 mt-1.5 max-w-2xl leading-relaxed">
-              International-standard 20-category bicycle service hierarchy, 8 specialized engineering departments, 
-              technician SOP workflows, and persistent Digital Bicycle Passports.
-            </p>
+      <!-- ========================================================= -->
+      <!-- 1. PAGE HEADER                                            -->
+      <!-- ========================================================= -->
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-surface-0 dark:bg-surface-900 p-6 rounded-2xl border border-surface-200 dark:border-surface-700 shadow-sm">
+        <div>
+          <div class="flex items-center gap-2 text-xs font-semibold text-orange-600 dark:text-orange-400 uppercase tracking-wider mb-1">
+            <i class="pi pi-wrench"></i> Operations
           </div>
-
-          <div class="flex flex-wrap items-center gap-3">
-            <p-button
-              label="New Service Ticket"
-              icon="pi pi-plus"
-              routerLink="/services/new"
-              severity="primary"
-              styleClass="bg-orange-500 hover:bg-orange-600 border-none font-semibold shadow-lg shadow-orange-500/20"
-            ></p-button>
-            <p-button
-              label="New Health Audit"
-              icon="pi pi-verified"
-              (click)="openHealthAuditDialog()"
-              [outlined]="true"
-              styleClass="text-white border-white/30 hover:bg-white/10"
-            ></p-button>
-          </div>
+          <h1 class="text-2xl sm:text-3xl font-bold text-surface-900 dark:text-surface-0 tracking-tight">
+            Service Management
+          </h1>
+          <p class="text-sm text-muted-color mt-1">
+            Manage bicycle service jobs, technician assignments, status workflows and customer repair orders.
+          </p>
         </div>
 
-        <!-- Quick Metrics Strip -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-6 border-t border-white/10">
-          <div class="bg-white/5 backdrop-blur-sm p-3.5 rounded-xl border border-white/10">
-            <div class="text-xs text-surface-300 uppercase font-semibold">Service Departments</div>
-            <div class="text-2xl font-bold text-orange-400 mt-0.5">8 Departments</div>
-          </div>
-          <div class="bg-white/5 backdrop-blur-sm p-3.5 rounded-xl border border-white/10">
-            <div class="text-xs text-surface-300 uppercase font-semibold">Standard Services</div>
-            <div class="text-2xl font-bold text-white mt-0.5">20 Categories</div>
-          </div>
-          <div class="bg-white/5 backdrop-blur-sm p-3.5 rounded-xl border border-white/10">
-            <div class="text-xs text-surface-300 uppercase font-semibold">Active Service Tickets</div>
-            <div class="text-2xl font-bold text-emerald-400 mt-0.5">{{ filteredTickets.length }} Orders</div>
-          </div>
-          <div class="bg-white/5 backdrop-blur-sm p-3.5 rounded-xl border border-white/10">
-            <div class="text-xs text-surface-300 uppercase font-semibold">Digital Passports</div>
-            <div class="text-2xl font-bold text-cyan-400 mt-0.5">{{ catalogService.passports().length }} Verified</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Main Section Tabs Switcher -->
-      <div class="flex items-center gap-2 border-b border-surface-200 dark:border-surface-700 pb-2 overflow-x-auto">
-        <button
-          type="button"
-          (click)="activeTab = 'catalog'"
-          [ngClass]="activeTab === 'catalog' 
-            ? 'bg-orange-500 text-white shadow-sm font-bold' 
-            : 'bg-surface-100 dark:bg-surface-800 text-surface-700 dark:text-surface-300 hover:bg-surface-200 dark:hover:bg-surface-700 font-medium'"
-          class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm transition-all whitespace-nowrap"
-        >
-          <i class="pi pi-wrench text-base"></i>
-          <span>1. Service Catalog & SOPs (20 Services)</span>
-        </button>
-
-        <button
-          type="button"
-          (click)="activeTab = 'tickets'"
-          [ngClass]="activeTab === 'tickets' 
-            ? 'bg-orange-500 text-white shadow-sm font-bold' 
-            : 'bg-surface-100 dark:bg-surface-800 text-surface-700 dark:text-surface-300 hover:bg-surface-200 dark:hover:bg-surface-700 font-medium'"
-          class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm transition-all whitespace-nowrap"
-        >
-          <i class="pi pi-list text-base"></i>
-          <span>2. Active Service Orders</span>
-          <span class="px-2 py-0.5 rounded-full text-xs" [ngClass]="activeTab === 'tickets' ? 'bg-white/20 text-white' : 'bg-surface-200 dark:bg-surface-700 text-surface-800 dark:text-surface-200'">
-            {{ filteredTickets.length }}
-          </span>
-        </button>
-
-        <button
-          type="button"
-          (click)="activeTab = 'passports'"
-          [ngClass]="activeTab === 'passports' 
-            ? 'bg-orange-500 text-white shadow-sm font-bold' 
-            : 'bg-surface-100 dark:bg-surface-800 text-surface-700 dark:text-surface-300 hover:bg-surface-200 dark:hover:bg-surface-700 font-medium'"
-          class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm transition-all whitespace-nowrap"
-        >
-          <i class="pi pi-id-card text-base"></i>
-          <span>3. Digital Bicycle Passports</span>
-          <span class="px-2 py-0.5 rounded-full text-xs" [ngClass]="activeTab === 'passports' ? 'bg-white/20 text-white' : 'bg-surface-200 dark:bg-surface-700 text-surface-800 dark:text-surface-200'">
-            {{ catalogService.passports().length }}
-          </span>
-        </button>
-      </div>
-
-      <!-- ===================================================================== -->
-      <!-- TAB 1: 20 SERVICES & 8 DEPARTMENTS CATALOG -->
-      <!-- ===================================================================== -->
-      <div *ngIf="activeTab === 'catalog'" class="flex flex-col gap-6">
-        
-        <!-- Department Filters Bar -->
-        <div class="card p-4 shadow-sm border border-surface-200 dark:border-surface-700">
-          <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-3">
-            <div>
-              <span class="text-xs font-bold uppercase tracking-wider text-muted-color">Select Workshop Department</span>
-              <h3 class="text-base font-bold text-surface-900 dark:text-surface-0">8 Modular Service Departments</h3>
-            </div>
-
-            <!-- Search in Catalog -->
-            <div class="relative w-full md:w-72">
-              <i class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-muted-color"></i>
-              <input
-                pInputText
-                type="text"
-                [(ngModel)]="catalogSearchQuery"
-                placeholder="Search services, SOPs, codes..."
-                class="w-full pl-9 text-sm"
-              />
-            </div>
-          </div>
-
-          <div class="flex items-center gap-2 overflow-x-auto pb-2">
-            <button
-              type="button"
-              (click)="selectedDepartment = 'All'"
-              [ngClass]="selectedDepartment === 'All' ? 'bg-surface-900 dark:bg-surface-0 text-white dark:text-surface-900 font-bold' : 'bg-surface-100 dark:bg-surface-800 text-surface-700 dark:text-surface-300 hover:bg-surface-200'"
-              class="px-3.5 py-1.5 rounded-full text-xs flex items-center gap-1.5 transition-all whitespace-nowrap"
-            >
-              <span>All Departments</span>
-              <span class="px-1.5 py-0.2 rounded-full text-[10px] bg-white/20">20</span>
-            </button>
-
-            <button
-              *ngFor="let dept of catalogService.departments"
-              type="button"
-              (click)="selectedDepartment = dept.name"
-              [ngClass]="selectedDepartment === dept.name ? 'bg-orange-500 text-white font-bold' : 'bg-surface-100 dark:bg-surface-800 text-surface-700 dark:text-surface-300 hover:bg-surface-200'"
-              class="px-3.5 py-1.5 rounded-full text-xs flex items-center gap-1.5 transition-all whitespace-nowrap"
-            >
-              <i [class]="dept.icon" class="text-xs"></i>
-              <span>{{ dept.name }}</span>
-            </button>
-          </div>
-
-          <!-- Bike Type Filter Pills -->
-          <div class="flex items-center gap-2 mt-3 pt-3 border-t border-surface-200 dark:border-surface-700 overflow-x-auto">
-            <span class="text-xs text-muted-color font-semibold uppercase mr-1">Bike Filter:</span>
-            <button
-              *ngFor="let bType of bikeTypeFilterOptions"
-              type="button"
-              (click)="selectedBikeTypeFilter = bType"
-              [ngClass]="selectedBikeTypeFilter === bType ? 'border-orange-500 text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/40 font-bold' : 'border-surface-300 dark:border-surface-700 text-surface-600 dark:text-surface-400 hover:border-surface-400'"
-              class="border px-2.5 py-1 rounded-md text-xs transition-all whitespace-nowrap"
-            >
-              {{ bType }}
-            </button>
-          </div>
-        </div>
-
-        <!-- Dynamic Cost & Time Estimator Banner -->
-        <div class="bg-surface-0 dark:bg-surface-900 border border-orange-500/30 rounded-xl p-5 shadow-sm">
-          <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-950/80 flex items-center justify-center text-orange-600 dark:text-orange-400 text-xl font-bold">
-                ⚡
-              </div>
-              <div>
-                <h4 class="font-bold text-surface-900 dark:text-surface-0 text-base">Quick Service Estimator & Calculator</h4>
-                <p class="text-xs text-muted-color">Dynamic quotation based on bike discipline and mobile doorstep dispatch.</p>
-              </div>
-            </div>
-
-            <div class="flex flex-wrap items-center gap-3">
-              <p-select
-                [options]="catalogService.services()"
-                [(ngModel)]="estimatorServiceId"
-                optionLabel="name"
-                optionValue="id"
-                placeholder="Select Service"
-                styleClass="w-64 text-xs"
-              ></p-select>
-
-              <p-select
-                [options]="['Road', 'Mountain', 'Gravel', 'Electric', 'Hybrid', 'BMX']"
-                [(ngModel)]="estimatorBikeType"
-                placeholder="Bicycle Type"
-                styleClass="w-36 text-xs"
-              ></p-select>
-
-              <div class="flex items-center gap-2 bg-surface-100 dark:bg-surface-800 px-3 py-1.5 rounded-lg">
-                <span class="text-xs font-semibold text-surface-700 dark:text-surface-300">Doorstep Van:</span>
-                <p-toggleswitch [(ngModel)]="estimatorDoorstep"></p-toggleswitch>
-              </div>
-
-              <div class="bg-orange-500 text-white px-4 py-2 rounded-lg text-right flex items-center gap-3">
-                <div>
-                  <div class="text-[10px] uppercase font-bold text-orange-200">Estimated Total</div>
-                  <div class="text-base font-extrabold">₹ {{ getCalculatedEstimate().total }}</div>
-                </div>
-                <div class="border-l border-white/20 pl-3">
-                  <div class="text-[10px] uppercase font-bold text-orange-200">Duration</div>
-                  <div class="text-sm font-semibold">{{ getCalculatedEstimate().durationMinutes }} mins</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 20 Service Cards Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-          <div
-            *ngFor="let s of filteredCatalogServices"
-            class="bg-surface-0 dark:bg-surface-900 rounded-xl border border-surface-200 dark:border-surface-700 p-5 shadow-sm hover:shadow-md hover:border-orange-500/50 transition-all flex flex-col justify-between"
-          >
-            <div>
-              <!-- Category Header & Badges -->
-              <div class="flex items-start justify-between gap-2 mb-3">
-                <div class="flex items-center gap-2">
-                  <span class="w-7 h-7 rounded-lg bg-orange-100 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 font-bold text-xs flex items-center justify-center font-mono">
-                    #{{ s.categoryNumber }}
-                  </span>
-                  <span class="text-xs font-semibold px-2 py-0.5 rounded bg-surface-100 dark:bg-surface-800 text-surface-700 dark:text-surface-300">
-                    {{ s.department }}
-                  </span>
-                </div>
-
-                <span
-                  *ngIf="s.isSignature"
-                  class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 uppercase tracking-tight"
-                >
-                  ⭐ {{ s.signatureBadge }}
-                </span>
-              </div>
-
-              <!-- Service Title & Tagline -->
-              <h3 class="text-lg font-bold text-surface-900 dark:text-surface-0 flex items-center gap-2">
-                <i [class]="s.icon" class="text-orange-500 text-base"></i>
-                {{ s.name }}
-              </h3>
-              <div class="text-xs font-mono text-muted-color mb-2">Code: {{ s.code }}</div>
-              
-              <p class="text-xs text-surface-600 dark:text-surface-300 mb-4 line-clamp-2">
-                {{ s.tagline }}
-              </p>
-
-              <!-- Benefits List -->
-              <div class="space-y-1.5 mb-4 bg-surface-50 dark:bg-surface-800/60 p-3 rounded-lg">
-                <div class="text-[11px] font-bold text-muted-color uppercase mb-1">Key Highlights:</div>
-                <div *ngFor="let benefit of s.includedBenefits" class="flex items-center gap-2 text-xs text-surface-700 dark:text-surface-200">
-                  <i class="pi pi-check text-emerald-500 text-[10px]"></i>
-                  <span>{{ benefit }}</span>
-                </div>
-              </div>
-
-              <!-- Compatible Bikes -->
-              <div class="flex flex-wrap gap-1 mb-4">
-                <span
-                  *ngFor="let bType of s.compatibleBikeTypes"
-                  class="text-[10px] px-1.5 py-0.5 rounded bg-surface-100 dark:bg-surface-800 text-muted-color font-medium"
-                >
-                  {{ bType }}
-                </span>
-              </div>
-            </div>
-
-            <!-- Price & Actions Footer -->
-            <div class="pt-4 border-t border-surface-200 dark:border-surface-700 flex items-center justify-between gap-3">
-              <div>
-                <div class="text-xs text-muted-color">Base Labor Price</div>
-                <div class="text-lg font-extrabold text-surface-900 dark:text-surface-0">
-                  ₹ {{ s.basePrice }}
-                  <span class="text-xs font-normal text-muted-color">/ ~{{ s.estimatedMinutes }}m</span>
-                </div>
-              </div>
-
-              <div class="flex items-center gap-2">
-                <p-button
-                  icon="pi pi-list-check"
-                  label="SOP Checklist"
-                  size="small"
-                  [outlined]="true"
-                  severity="secondary"
-                  (click)="viewSOP(s)"
-                  pTooltip="View technician standard operating procedures"
-                ></p-button>
-                <p-button
-                  icon="pi pi-calendar-plus"
-                  label="Book"
-                  size="small"
-                  (click)="bookService(s)"
-                  styleClass="bg-orange-500 hover:bg-orange-600 border-none font-semibold"
-                ></p-button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ===================================================================== -->
-      <!-- TAB 2: ACTIVE SERVICE ORDERS (TICKETS TABLE) -->
-      <!-- ===================================================================== -->
-      <div *ngIf="activeTab === 'tickets'" class="flex flex-col gap-6">
-        
-        <!-- Filters & Search Toolbar -->
-        <div class="card p-4 shadow-sm border border-surface-200 dark:border-surface-700">
-          <div class="grid grid-cols-12 gap-4 items-end">
-            <div class="col-span-12 md:col-span-4">
-              <label class="block text-xs font-semibold text-muted-color uppercase mb-1.5">Search Service / Customer / Bike</label>
-              <div class="relative w-full">
-                <i class="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-muted-color"></i>
-                <input
-                  pInputText
-                  type="text"
-                  [(ngModel)]="searchQuery"
-                  placeholder="Search ticket, customer, bike, S/N..."
-                  class="w-full pl-9"
-                />
-              </div>
-            </div>
-
-            <div class="col-span-12 sm:col-span-6 md:col-span-3">
-              <label class="block text-xs font-semibold text-muted-color uppercase mb-1.5">Category</label>
-              <p-select
-                [options]="categoryOptions"
-                [(ngModel)]="selectedCategory"
-                placeholder="All Categories"
-                [showClear]="true"
-                styleClass="w-full"
-              ></p-select>
-            </div>
-
-            <div class="col-span-12 sm:col-span-6 md:col-span-3">
-              <label class="block text-xs font-semibold text-muted-color uppercase mb-1.5">Status</label>
-              <p-select
-                [options]="statusOptions"
-                [(ngModel)]="selectedStatus"
-                placeholder="All Statuses"
-                [showClear]="true"
-                styleClass="w-full"
-              ></p-select>
-            </div>
-
-            <div class="col-span-12 md:col-span-2 flex gap-2">
-              <p-button
-                label="Reset"
-                icon="pi pi-filter-slash"
-                [outlined]="true"
-                severity="secondary"
-                (click)="resetFilters()"
-                styleClass="w-full"
-              ></p-button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Tickets Data Table -->
-        <div class="card p-0 shadow-sm border border-surface-200 dark:border-surface-700 overflow-hidden">
-          <p-table
-            [value]="filteredTickets"
-            [paginator]="true"
-            [rows]="10"
-            [rowsPerPageOptions]="[5, 10, 15, 20]"
-            [rowHover]="true"
-            [showCurrentPageReport]="true"
-            currentPageReportTemplate="Showing {first} to {last} of {totalRecords} services"
-            responsiveLayout="scroll"
-            styleClass="p-datatable-sm"
-          >
-            <ng-template #header>
-              <tr>
-                <th pSortableColumn="id" style="min-width: 6.5rem">Ticket ID <p-sortIcon field="id"></p-sortIcon></th>
-                <th pSortableColumn="customerName" style="min-width: 10rem">Customer <p-sortIcon field="customerName"></p-sortIcon></th>
-                <th pSortableColumn="cycleModel" style="min-width: 11rem">Cycle Model <p-sortIcon field="cycleModel"></p-sortIcon></th>
-                <th style="min-width: 9rem">Serial No.</th>
-                <th style="min-width: 9rem">Department</th>
-                <th pSortableColumn="status" style="min-width: 7.5rem">Status <p-sortIcon field="status"></p-sortIcon></th>
-                <th pSortableColumn="priority" style="min-width: 6.5rem">Priority <p-sortIcon field="priority"></p-sortIcon></th>
-                <th style="min-width: 9rem">Assignee</th>
-                <th style="min-width: 8rem">Est. Cost</th>
-                <th pSortableColumn="createdAt" style="min-width: 8rem">Created At <p-sortIcon field="createdAt"></p-sortIcon></th>
-                <th *ngIf="authService.isAdmin()" style="min-width: 5rem" class="text-center">Active</th>
-                <th style="min-width: 8rem" class="text-center">Actions</th>
-              </tr>
-            </ng-template>
-
-            <ng-template #body let-ticket>
-              <tr [class.opacity-60]="ticket.enabled === false">
-                <td>
-                  <span class="font-mono text-xs font-bold text-orange-600 dark:text-orange-400 cursor-pointer hover:underline" (click)="viewTicket(ticket)">
-                    {{ ticket.id }}
-                  </span>
-                </td>
-                <td>
-                  <div class="font-semibold text-surface-900 dark:text-surface-0 text-sm">{{ ticket.customerName }}</div>
-                  <div class="text-[11px] text-muted-color">{{ ticket.contactPhone }}</div>
-                </td>
-                <td>
-                  <div class="text-sm font-medium text-surface-800 dark:text-surface-100">{{ ticket.cycleModel }}</div>
-                  <div class="text-[11px] text-muted-color">ID: {{ ticket.cycleId }}</div>
-                </td>
-                <td>
-                  <span class="font-mono text-xs bg-surface-100 dark:bg-surface-800 px-1.5 py-0.5 rounded text-surface-700 dark:text-surface-300">
-                    {{ ticket.serialNumber }}
-                  </span>
-                </td>
-                <td>
-                  <span class="text-xs px-2 py-0.5 rounded bg-surface-100 dark:bg-surface-800 text-surface-700 dark:text-surface-300">
-                    {{ ticket.department || ticket.category || 'General' }}
-                  </span>
-                </td>
-                <td>
-                  <p-tag
-                    [value]="ticket.status"
-                    [severity]="getStatusSeverity(ticket.status)"
-                    [rounded]="true"
-                    styleClass="text-xs"
-                  ></p-tag>
-                </td>
-                <td>
-                  <p-tag
-                    [value]="ticket.priority"
-                    [severity]="getPrioritySeverity(ticket.priority)"
-                    [rounded]="true"
-                    styleClass="text-xs"
-                  ></p-tag>
-                </td>
-                <td>
-                  <span class="text-xs font-medium text-surface-700 dark:text-surface-200">
-                    {{ ticket.assigneeName || 'Unassigned' }}
-                  </span>
-                </td>
-                <td>
-                  <span class="font-mono text-xs font-bold text-surface-900 dark:text-surface-0">
-                    ₹ {{ ticket.estimatedCost || 0 }}
-                  </span>
-                </td>
-                <td>
-                  <span class="text-xs text-muted-color">{{ ticket.createdAt | slice:0:10 }}</span>
-                </td>
-                <td *ngIf="authService.isAdmin()" class="text-center">
-                  <p-toggleswitch
-                    [(ngModel)]="ticket.enabled"
-                    (onChange)="confirmToggleEnabled(ticket)"
-                  ></p-toggleswitch>
-                </td>
-                <td class="text-center">
-                  <div class="flex items-center justify-center gap-1">
-                    <button
-                      pButton
-                      icon="pi pi-eye"
-                      [rounded]="true"
-                      [text]="true"
-                      severity="secondary"
-                      size="small"
-                      pTooltip="View Details & Checklist"
-                      (click)="viewTicket(ticket)"
-                    ></button>
-                    <button
-                      *ngIf="authService.isAdmin()"
-                      pButton
-                      icon="pi pi-pencil"
-                      [rounded]="true"
-                      [text]="true"
-                      severity="info"
-                      size="small"
-                      pTooltip="Edit Ticket"
-                      (click)="openEditDialog(ticket)"
-                    ></button>
-                    <button
-                      *ngIf="authService.isAdmin()"
-                      pButton
-                      icon="pi pi-trash"
-                      [rounded]="true"
-                      [text]="true"
-                      severity="danger"
-                      size="small"
-                      pTooltip="Delete Ticket"
-                      (click)="confirmDelete(ticket)"
-                    ></button>
-                  </div>
-                </td>
-              </tr>
-            </ng-template>
-
-            <ng-template #emptymessage>
-              <tr>
-                <td colspan="12" class="text-center py-8 text-muted-color">
-                  <div class="flex flex-col items-center gap-2">
-                    <i class="pi pi-inbox text-4xl text-surface-400"></i>
-                    <p class="text-sm">No service orders found matching criteria.</p>
-                  </div>
-                </td>
-              </tr>
-            </ng-template>
-          </p-table>
-        </div>
-      </div>
-
-      <!-- ===================================================================== -->
-      <!-- TAB 3: DIGITAL BICYCLE PASSPORT & HEALTH DIAGNOSTIC -->
-      <!-- ===================================================================== -->
-      <div *ngIf="activeTab === 'passports'" class="flex flex-col gap-6">
-        
-        <!-- Passport Intro & Header -->
-        <div class="bg-surface-0 dark:bg-surface-900 p-6 rounded-xl border border-surface-200 dark:border-surface-700 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <div class="flex items-center gap-2">
-              <span class="text-xs px-2.5 py-0.5 rounded-full font-bold bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 uppercase">
-                🛡️ Car-Style Lifetime Service Record
-              </span>
-            </div>
-            <h2 class="text-xl font-bold text-surface-900 dark:text-surface-0 mt-1">FREEWHEEL FACTORY Digital Bicycle Passport</h2>
-            <p class="text-xs text-muted-color">Tracks component wear, structural integrity, torque verification, and pre-owned vehicle resale valuation.</p>
-          </div>
+        <div class="flex items-center gap-3">
+          <p-button
+            label="Refresh"
+            icon="pi pi-refresh"
+            [outlined]="true"
+            severity="secondary"
+            (click)="loadData()"
+            [loading]="isLoading()"
+            size="small"
+          ></p-button>
 
           <p-button
-            label="Perform Health Audit"
+            label="Create Service"
             icon="pi pi-plus"
-            (click)="openHealthAuditDialog()"
-            styleClass="bg-cyan-600 hover:bg-cyan-700 border-none font-semibold text-white"
+            (click)="openCreateDialog()"
+            styleClass="bg-orange-500 hover:bg-orange-600 border-none text-white font-semibold shadow-sm"
+            size="small"
           ></p-button>
         </div>
+      </div>
 
-        <!-- Digital Passport Cards Grid -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div
-            *ngFor="let p of catalogService.passports()"
-            class="bg-surface-0 dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all"
-          >
-            <!-- Card Header -->
-            <div class="bg-gradient-to-r from-surface-900 to-surface-800 p-4 text-white flex items-center justify-between">
-              <div>
-                <div class="text-[10px] uppercase font-mono tracking-widest text-cyan-400">PASSPORT ID: {{ p.id }}</div>
-                <h3 class="text-base font-bold text-white mt-0.5">{{ p.brand }} {{ p.model }}</h3>
-                <div class="text-xs text-surface-300 font-mono">S/N: {{ p.serialNumber }}</div>
-              </div>
-              <div class="text-right">
-                <div class="text-2xl font-extrabold text-cyan-400">{{ p.overallHealthScore }}%</div>
-                <div class="text-[10px] text-surface-300 uppercase">Health Score</div>
-              </div>
-            </div>
-
-            <!-- Card Body -->
-            <div class="p-4 space-y-3">
-              <div class="flex items-center justify-between text-xs pb-2 border-b border-surface-100 dark:border-surface-800">
-                <span class="text-muted-color">Owner:</span>
-                <span class="font-semibold text-surface-900 dark:text-surface-0">{{ p.ownerName }} ({{ p.ownerPhone }})</span>
-              </div>
-
-              <div class="flex items-center justify-between text-xs pb-2 border-b border-surface-100 dark:border-surface-800">
-                <span class="text-muted-color">Race Ready Status:</span>
-                <span
-                  class="font-bold px-2 py-0.5 rounded text-[11px]"
-                  [ngClass]="p.raceReadyStatus === 'PASS' ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600' : 'bg-amber-100 dark:bg-amber-950/60 text-amber-600'"
-                >
-                  {{ p.raceReadyStatus }}
-                </span>
-              </div>
-
-              <!-- Component Health Items Matrix -->
-              <div>
-                <div class="text-[11px] font-bold text-muted-color uppercase mb-2">Component Health Matrix:</div>
-                <div class="space-y-1.5">
-                  <div
-                    *ngFor="let item of p.inspectionItems"
-                    class="flex items-center justify-between text-xs p-2 rounded bg-surface-50 dark:bg-surface-800/60"
-                  >
-                    <div class="flex items-center gap-2">
-                      <span
-                        class="w-2.5 h-2.5 rounded-full"
-                        [ngClass]="item.status === 'GOOD' ? 'bg-emerald-500' : (item.status === 'ATTENTION_REQUIRED' ? 'bg-amber-500' : 'bg-red-500')"
-                      ></span>
-                      <span class="font-medium text-surface-800 dark:text-surface-100">{{ item.componentName }}</span>
-                    </div>
-                    <span class="text-[11px] text-muted-color font-mono">{{ item.measuredWear || 'Inspected' }}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div class="text-xs text-muted-color italic bg-surface-50 dark:bg-surface-800 p-2.5 rounded">
-                "{{ p.notes }}"
-              </div>
-            </div>
-
-            <!-- Card Footer -->
-            <div class="p-3 bg-surface-50 dark:bg-surface-800/40 border-t border-surface-100 dark:border-surface-800 flex items-center justify-between">
-              <span class="text-[11px] text-muted-color">Audited by: {{ p.inspectorName }}</span>
-              <p-button
-                label="View Passport"
-                icon="pi pi-id-card"
-                size="small"
-                [outlined]="true"
-                (click)="viewPassport(p)"
-              ></p-button>
+      <!-- ========================================================= -->
+      <!-- 2. SUMMARY CARDS (API-DRIVEN METRICS)                     -->
+      <!-- ========================================================= -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        <!-- Total Services -->
+        <div class="bg-surface-0 dark:bg-surface-900 p-4 rounded-xl border border-surface-200 dark:border-surface-700 shadow-sm flex items-center justify-between">
+          <div>
+            <span class="text-xs font-semibold text-muted-color uppercase">Total Services</span>
+            <div class="text-2xl font-bold text-surface-900 dark:text-surface-0 mt-1">
+              {{ metrics().total }}
             </div>
           </div>
+          <div class="w-10 h-10 rounded-lg bg-surface-100 dark:bg-surface-800 flex items-center justify-center text-surface-600 dark:text-surface-300">
+            <i class="pi pi-list text-lg"></i>
+          </div>
         </div>
+
+        <!-- New / Waiting -->
+        <div class="bg-surface-0 dark:bg-surface-900 p-4 rounded-xl border border-surface-200 dark:border-surface-700 shadow-sm flex items-center justify-between">
+          <div>
+            <span class="text-xs font-semibold text-muted-color uppercase">New</span>
+            <div class="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">
+              {{ metrics().newCount }}
+            </div>
+          </div>
+          <div class="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-950/50 flex items-center justify-center text-blue-600 dark:text-blue-400">
+            <i class="pi pi-clock text-lg"></i>
+          </div>
+        </div>
+
+        <!-- Assigned -->
+        <div class="bg-surface-0 dark:bg-surface-900 p-4 rounded-xl border border-surface-200 dark:border-surface-700 shadow-sm flex items-center justify-between">
+          <div>
+            <span class="text-xs font-semibold text-muted-color uppercase">Assigned</span>
+            <div class="text-2xl font-bold text-purple-600 dark:text-purple-400 mt-1">
+              {{ metrics().assigned }}
+            </div>
+          </div>
+          <div class="w-10 h-10 rounded-lg bg-purple-50 dark:bg-purple-950/50 flex items-center justify-center text-purple-600 dark:text-purple-400">
+            <i class="pi pi-user-check text-lg"></i>
+          </div>
+        </div>
+
+        <!-- In Progress -->
+        <div class="bg-surface-0 dark:bg-surface-900 p-4 rounded-xl border border-surface-200 dark:border-surface-700 shadow-sm flex items-center justify-between">
+          <div>
+            <span class="text-xs font-semibold text-muted-color uppercase">In Progress</span>
+            <div class="text-2xl font-bold text-amber-600 dark:text-amber-400 mt-1">
+              {{ metrics().inProgress }}
+            </div>
+          </div>
+          <div class="w-10 h-10 rounded-lg bg-amber-50 dark:bg-amber-950/50 flex items-center justify-center text-amber-600 dark:text-amber-400">
+            <i class="pi pi-cog pi-spin text-lg"></i>
+          </div>
+        </div>
+
+        <!-- Completed -->
+        <div class="bg-surface-0 dark:bg-surface-900 p-4 rounded-xl border border-surface-200 dark:border-surface-700 shadow-sm flex items-center justify-between col-span-2 sm:col-span-1">
+          <div>
+            <span class="text-xs font-semibold text-muted-color uppercase">Completed</span>
+            <div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">
+              {{ metrics().completed }}
+            </div>
+          </div>
+          <div class="w-10 h-10 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+            <i class="pi pi-check-circle text-lg"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================================================= -->
+      <!-- 3. FILTERS TOOLBAR                                        -->
+      <!-- ========================================================= -->
+      <div class="bg-surface-0 dark:bg-surface-900 p-4 rounded-xl border border-surface-200 dark:border-surface-700 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div class="flex items-center gap-2 text-xs text-muted-color">
+          <i class="pi pi-filter text-orange-500"></i>
+          <span class="font-semibold uppercase tracking-wider">Filters:</span>
+        </div>
+
+        <!-- Filter Selectors -->
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- Status Filter -->
+          <p-select
+            [options]="statusFilterOptions"
+            [(ngModel)]="selectedStatusFilter"
+            (onChange)="applyFilters()"
+            placeholder="All Statuses"
+            styleClass="w-40 text-sm"
+          ></p-select>
+
+          <!-- Technician Filter -->
+          <p-select
+            [options]="technicianFilterOptions"
+            [(ngModel)]="selectedTechnicianFilter"
+            (onChange)="applyFilters()"
+            placeholder="All Technicians"
+            styleClass="w-48 text-sm"
+          ></p-select>
+
+          <!-- Priority Filter -->
+          <p-select
+            [options]="priorityFilterOptions"
+            [(ngModel)]="selectedPriorityFilter"
+            (onChange)="applyFilters()"
+            placeholder="All Priorities"
+            styleClass="w-36 text-sm"
+          ></p-select>
+
+          <!-- Reset Filters -->
+          <p-button
+            *ngIf="hasActiveFilters"
+            icon="pi pi-filter-slash"
+            label="Clear"
+            [outlined]="true"
+            severity="secondary"
+            size="small"
+            (click)="clearFilters()"
+            pTooltip="Clear active filters"
+          ></p-button>
+        </div>
+      </div>
+
+      <!-- ========================================================= -->
+      <!-- 4. ERROR STATE BANNER                                     -->
+      <!-- ========================================================= -->
+      <div *ngIf="loadError()" class="p-4 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 flex items-center justify-between">
+        <div class="flex items-center gap-3 text-red-700 dark:text-red-300">
+          <i class="pi pi-exclamation-triangle text-xl"></i>
+          <div>
+            <div class="font-semibold text-sm">Unable to load services from backend</div>
+            <div class="text-xs text-red-600 dark:text-red-400">{{ loadErrorMessage() }}</div>
+          </div>
+        </div>
+        <p-button
+          label="Retry"
+          icon="pi pi-refresh"
+          severity="danger"
+          size="small"
+          (click)="loadData()"
+        ></p-button>
+      </div>
+
+      <!-- ========================================================= -->
+      <!-- 5. MAIN SERVICE TABLE                                     -->
+      <!-- ========================================================= -->
+      <div class="bg-surface-0 dark:bg-surface-900 rounded-2xl border border-surface-200 dark:border-surface-700 shadow-sm overflow-hidden">
+        <p-table
+          [value]="filteredTickets()"
+          [loading]="isLoading()"
+          [paginator]="true"
+          [rows]="10"
+          [rowsPerPageOptions]="[10, 20, 50]"
+          responsiveLayout="scroll"
+          styleClass="p-datatable-sm p-datatable-striped"
+        >
+          <!-- Table Header -->
+          <ng-template pTemplate="header">
+            <tr>
+              <th class="w-28 text-xs font-semibold text-muted-color uppercase">Service ID</th>
+              <th class="text-xs font-semibold text-muted-color uppercase">Customer</th>
+              <th class="text-xs font-semibold text-muted-color uppercase">Bicycle</th>
+              <th class="text-xs font-semibold text-muted-color uppercase">Contact</th>
+              <th class="text-xs font-semibold text-muted-color uppercase">Technician</th>
+              <th class="w-28 text-xs font-semibold text-muted-color uppercase">Priority</th>
+              <th class="w-32 text-xs font-semibold text-muted-color uppercase">Status</th>
+              <th class="w-32 text-xs font-semibold text-muted-color uppercase">Created</th>
+              <th class="w-28 text-right text-xs font-semibold text-muted-color uppercase">Actions</th>
+            </tr>
+          </ng-template>
+
+          <!-- Table Body -->
+          <ng-template pTemplate="body" let-ticket>
+            <tr class="hover:bg-surface-50 dark:hover:bg-surface-800/50 transition-colors">
+              <!-- Service ID -->
+              <td>
+                <span
+                  class="font-mono text-xs font-bold px-2 py-0.5 rounded bg-surface-100 dark:bg-surface-800 text-surface-800 dark:text-surface-200 border border-surface-200 dark:border-surface-700"
+                  [pTooltip]="ticket.id"
+                >
+                  #{{ ticket.id ? (ticket.id.substring(0, 8) | uppercase) : 'N/A' }}
+                </span>
+              </td>
+
+              <!-- Customer -->
+              <td>
+                <div class="font-semibold text-sm text-surface-900 dark:text-surface-0">
+                  {{ ticket.customerName || 'Customer' }}
+                </div>
+                <div *ngIf="ticket.companyName" class="text-xs text-muted-color flex items-center gap-1 mt-0.5">
+                  <i class="pi pi-building text-[10px]"></i>
+                  <span>{{ ticket.companyName }}</span>
+                </div>
+              </td>
+
+              <!-- Bicycle -->
+              <td>
+                <div class="text-sm font-medium text-surface-800 dark:text-surface-200">
+                  {{ ticket.cycleModel || 'Cycle' }}
+                </div>
+                <div *ngIf="ticket.serialNumber" class="text-xs font-mono text-muted-color mt-0.5">
+                  S/N: {{ ticket.serialNumber }}
+                </div>
+              </td>
+
+              <!-- Contact -->
+              <td>
+                <div class="text-xs text-surface-700 dark:text-surface-300 flex items-center gap-1">
+                  <i class="pi pi-phone text-[10px] text-muted-color"></i>
+                  <span>{{ ticket.contactPhone || '—' }}</span>
+                </div>
+                <div *ngIf="ticket.contactEmail" class="text-xs text-muted-color flex items-center gap-1 mt-0.5 truncate max-w-[180px]">
+                  <i class="pi pi-envelope text-[10px]"></i>
+                  <span class="truncate">{{ ticket.contactEmail }}</span>
+                </div>
+              </td>
+
+              <!-- Technician -->
+              <td>
+                <div *ngIf="ticket.assigneeName" class="flex items-center gap-1.5 text-xs text-surface-800 dark:text-surface-200 font-medium">
+                  <div class="w-5 h-5 rounded-full bg-orange-500/10 text-orange-600 dark:text-orange-400 flex items-center justify-center text-[10px] font-bold">
+                    {{ ticket.assigneeName.charAt(0) | uppercase }}
+                  </div>
+                  <span>{{ ticket.assigneeName }}</span>
+                </div>
+                <span *ngIf="!ticket.assigneeName" class="text-xs text-muted-color italic">Unassigned</span>
+              </td>
+
+              <!-- Priority Badge -->
+              <td>
+                <p-tag
+                  [value]="ticket.priority || 'Medium'"
+                  [severity]="getPrioritySeverity(ticket.priority)"
+                  styleClass="text-xs font-semibold"
+                ></p-tag>
+              </td>
+
+              <!-- Status Badge -->
+              <td>
+                <p-tag
+                  [value]="ticket.status || 'New'"
+                  [severity]="getStatusSeverity(ticket.status)"
+                  styleClass="text-xs font-semibold"
+                ></p-tag>
+              </td>
+
+              <!-- Created Date -->
+              <td>
+                <div class="text-xs text-surface-700 dark:text-surface-300">
+                  {{ ticket.createdAt ? (ticket.createdAt | date:'mediumDate') : '—' }}
+                </div>
+                <div class="text-[10px] text-muted-color">
+                  {{ ticket.createdAt ? (ticket.createdAt | date:'shortTime') : '' }}
+                </div>
+              </td>
+
+              <!-- Actions -->
+              <td class="text-right">
+                <div class="flex items-center justify-end gap-1">
+                  <!-- View Details -->
+                  <p-button
+                    icon="pi pi-eye"
+                    [rounded]="true"
+                    [text]="true"
+                    severity="secondary"
+                    size="small"
+                    pTooltip="View Details"
+                    (click)="openViewDialog(ticket)"
+                  ></p-button>
+
+                  <!-- Edit Ticket -->
+                  <p-button
+                    icon="pi pi-pencil"
+                    [rounded]="true"
+                    [text]="true"
+                    severity="primary"
+                    size="small"
+                    pTooltip="Edit Service"
+                    (click)="openEditDialog(ticket)"
+                  ></p-button>
+                </div>
+              </td>
+            </tr>
+          </ng-template>
+
+          <!-- Empty State -->
+          <ng-template pTemplate="emptymessage">
+            <tr>
+              <td colspan="9" class="text-center py-12">
+                <div class="flex flex-col items-center justify-center gap-3">
+                  <div class="w-14 h-14 rounded-2xl bg-surface-100 dark:bg-surface-800 flex items-center justify-center text-surface-400">
+                    <i class="pi pi-inbox text-2xl"></i>
+                  </div>
+                  <div>
+                    <h3 class="text-base font-semibold text-surface-900 dark:text-surface-0">No services found</h3>
+                    <p class="text-xs text-muted-color mt-1">
+                      {{ hasActiveFilters ? 'No services matched your filter criteria.' : 'No service jobs have been registered in the database yet.' }}
+                    </p>
+                  </div>
+                  <p-button
+                    *ngIf="!hasActiveFilters"
+                    label="Create Service"
+                    icon="pi pi-plus"
+                    size="small"
+                    (click)="openCreateDialog()"
+                    styleClass="bg-orange-500 hover:bg-orange-600 border-none text-white font-semibold mt-1"
+                  ></p-button>
+                </div>
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
       </div>
 
     </div>
 
-    <!-- ===================================================================== -->
-    <!-- SOP CHECKLIST DRAWER / DIALOG -->
-    <!-- ===================================================================== -->
-    <p-drawer
-      [(visible)]="sopDrawerVisible"
-      position="right"
-      [style]="{ width: '450px' }"
-      [modal]="true"
-    >
-      <ng-template #header>
-        <div *ngIf="selectedCatalogService" class="flex items-center gap-3">
-          <div class="w-9 h-9 rounded-lg bg-orange-100 dark:bg-orange-950 text-orange-600 flex items-center justify-center">
-            <i [class]="selectedCatalogService.icon" class="text-lg"></i>
-          </div>
-          <div>
-            <div class="text-xs uppercase font-bold text-orange-600">SOP Protocol — #{{ selectedCatalogService.categoryNumber }}</div>
-            <h3 class="text-base font-bold text-surface-900 dark:text-surface-0">{{ selectedCatalogService.name }}</h3>
-          </div>
-        </div>
-      </ng-template>
-
-      <div *ngIf="selectedCatalogService" class="space-y-4 py-2">
-        <div class="p-3 bg-surface-50 dark:bg-surface-800 rounded-lg">
-          <div class="text-xs text-muted-color font-medium">Department</div>
-          <div class="text-sm font-semibold text-surface-900 dark:text-surface-0">{{ selectedCatalogService.department }}</div>
-          <div class="text-xs text-muted-color mt-1">Standard Duration: ~{{ selectedCatalogService.estimatedMinutes }} mins | Base Labor: ₹ {{ selectedCatalogService.basePrice }}</div>
-        </div>
-
-        <div>
-          <h4 class="text-xs font-bold uppercase tracking-wider text-muted-color mb-2">Step-by-Step SOP Checklist:</h4>
-          <div class="space-y-2">
-            <div
-              *ngFor="let step of selectedCatalogService.sopChecklist; let i = index"
-              class="flex items-start gap-3 p-3 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900"
-            >
-              <span class="w-5 h-5 rounded-full bg-orange-500 text-white font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">
-                {{ i + 1 }}
-              </span>
-              <span class="text-xs text-surface-700 dark:text-surface-200 leading-relaxed font-medium">
-                {{ step }}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div class="pt-4">
-          <p-button
-            label="Create Ticket with this Service"
-            icon="pi pi-plus"
-            styleClass="w-full bg-orange-500 hover:bg-orange-600 border-none font-semibold"
-            (click)="bookService(selectedCatalogService)"
-          ></p-button>
-        </div>
-      </div>
-    </p-drawer>
-
-    <!-- ===================================================================== -->
-    <!-- SERVICE TICKET DETAIL DRAWER -->
-    <!-- ===================================================================== -->
-    <p-drawer
-      [(visible)]="drawerVisible"
-      position="right"
-      [style]="{ width: '480px' }"
-      [modal]="true"
-    >
-      <ng-template #header>
-        <div *ngIf="selectedTicket">
-          <div class="text-xs text-muted-color font-mono uppercase">Ticket Details</div>
-          <h3 class="text-lg font-bold text-surface-900 dark:text-surface-0 flex items-center gap-2">
-            <span>{{ selectedTicket.id }}</span>
-            <p-tag [value]="selectedTicket.status" [severity]="getStatusSeverity(selectedTicket.status)" [rounded]="true"></p-tag>
-          </h3>
-        </div>
-      </ng-template>
-
-      <div *ngIf="selectedTicket" class="space-y-5 py-2">
-        <div class="p-4 rounded-xl bg-surface-50 dark:bg-surface-800/60 border border-surface-200 dark:border-surface-700 space-y-2">
-          <div class="text-xs font-bold uppercase text-muted-color">Customer & Bicycle</div>
-          <div class="text-sm font-semibold text-surface-900 dark:text-surface-0">{{ selectedTicket.customerName }}</div>
-          <div class="text-xs text-muted-color">Phone: {{ selectedTicket.contactPhone }} | Email: {{ selectedTicket.contactEmail }}</div>
-          <div class="text-xs text-muted-color">Company: {{ selectedTicket.companyName || '—' }}</div>
-          <div class="pt-2 border-t border-surface-200 dark:border-surface-700 text-xs">
-            <span class="font-semibold text-surface-800 dark:text-surface-100">Bicycle:</span> {{ selectedTicket.cycleModel }} (S/N: {{ selectedTicket.serialNumber }})
-          </div>
-        </div>
-
-        <div class="space-y-2">
-          <div class="text-xs font-bold uppercase text-muted-color">Service Description</div>
-          <p class="text-sm text-surface-700 dark:text-surface-300 bg-surface-50 dark:bg-surface-800 p-3 rounded-lg leading-relaxed">
-            {{ selectedTicket.description }}
-          </p>
-        </div>
-
-        <div class="grid grid-cols-2 gap-3 text-xs">
-          <div class="p-3 bg-surface-50 dark:bg-surface-800 rounded-lg">
-            <span class="text-muted-color">Assigned Technician:</span>
-            <div class="font-semibold text-surface-900 dark:text-surface-0 mt-0.5">{{ selectedTicket.assigneeName || 'Unassigned' }}</div>
-          </div>
-          <div class="p-3 bg-surface-50 dark:bg-surface-800 rounded-lg">
-            <span class="text-muted-color">Estimated Cost:</span>
-            <div class="font-semibold text-surface-900 dark:text-surface-0 mt-0.5">₹ {{ selectedTicket.estimatedCost || 0 }}</div>
-          </div>
-        </div>
-
-        <div class="flex items-center gap-2 pt-4">
-          <p-button
-            label="Edit Ticket"
-            icon="pi pi-pencil"
-            size="small"
-            styleClass="w-full"
-            (click)="openEditDialog(selectedTicket); drawerVisible = false"
-          ></p-button>
-        </div>
-      </div>
-    </p-drawer>
-
-    <!-- ===================================================================== -->
-    <!-- EDIT TICKET DIALOG -->
-    <!-- ===================================================================== -->
+    <!-- ========================================================= -->
+    <!-- 6. CREATE SERVICE MODAL (9 REQUESTED FIELDS)             -->
+    <!-- ========================================================= -->
     <p-dialog
-      [(visible)]="editDialogVisible"
-      header="Edit Service Ticket"
+      header="Create Service Ticket"
+      [(visible)]="createDialogVisible"
       [modal]="true"
-      [style]="{ width: '480px' }"
-      [closable]="true"
+      [style]="{ width: '680px', maxWidth: '95vw' }"
+      [draggable]="false"
+      [resizable]="false"
     >
-      <div *ngIf="editingTicket" class="space-y-4 pt-2">
-        <div>
-          <label class="block text-xs font-semibold text-muted-color uppercase mb-1.5">Status</label>
-          <p-select
-            [options]="statusOptions"
-            [(ngModel)]="editingTicket.status"
-            optionLabel="label"
-            optionValue="value"
-            styleClass="w-full"
-          ></p-select>
+      <form [formGroup]="createForm" (ngSubmit)="submitCreate()" class="space-y-4 pt-2">
+        <!-- Customer & Cycle -->
+        <div class="grid grid-cols-12 gap-3">
+          <!-- Customer -->
+          <div class="col-span-12 sm:col-span-6">
+            <label class="block text-xs font-semibold text-muted-color uppercase mb-1">
+              Customer <span class="text-red-500">*</span>
+            </label>
+            <p-select
+              [options]="customerOptions"
+              formControlName="customerId"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Select Customer"
+              [filter]="true"
+              filterBy="label"
+              (onChange)="onCustomerSelect($event.value)"
+              styleClass="w-full text-sm"
+              [ngClass]="{ 'ng-invalid ng-dirty': isCreateFieldInvalid('customerId') }"
+            ></p-select>
+            <small *ngIf="isCreateFieldInvalid('customerId')" class="text-red-500 text-xs mt-0.5 block">Customer is required.</small>
+          </div>
+
+          <!-- Cycle -->
+          <div class="col-span-12 sm:col-span-6">
+            <label class="block text-xs font-semibold text-muted-color uppercase mb-1">
+              Cycle / Bicycle <span class="text-red-500">*</span>
+            </label>
+            <p-select
+              [options]="cycleOptions"
+              formControlName="cycleId"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Select Bicycle"
+              [filter]="true"
+              filterBy="label"
+              styleClass="w-full text-sm"
+              [ngClass]="{ 'ng-invalid ng-dirty': isCreateFieldInvalid('cycleId') }"
+            ></p-select>
+            <small *ngIf="isCreateFieldInvalid('cycleId')" class="text-red-500 text-xs mt-0.5 block">Cycle is required.</small>
+          </div>
         </div>
 
+        <!-- Company Name -->
         <div>
-          <label class="block text-xs font-semibold text-muted-color uppercase mb-1.5">Priority</label>
-          <p-select
-            [options]="priorityOptions"
-            [(ngModel)]="editingTicket.priority"
-            optionLabel="label"
-            optionValue="value"
-            styleClass="w-full"
-          ></p-select>
-        </div>
-
-        <div>
-          <label class="block text-xs font-semibold text-muted-color uppercase mb-1.5">Assignee Technician</label>
-          <p-select
-            [options]="technicianOptions"
-            [(ngModel)]="editingTicket.assigneeId"
-            optionLabel="name"
-            optionValue="id"
-            placeholder="Select Technician"
-            styleClass="w-full"
-          ></p-select>
-        </div>
-
-        <div>
-          <label class="block text-xs font-semibold text-muted-color uppercase mb-1.5">Estimated Cost (₹)</label>
+          <label class="block text-xs font-semibold text-muted-color uppercase mb-1">
+            Company / Club Name
+          </label>
           <input
             pInputText
-            type="number"
-            [(ngModel)]="editingTicket.estimatedCost"
-            class="w-full"
+            formControlName="companyName"
+            placeholder="e.g. Vance Logistics (optional)"
+            class="w-full text-sm"
           />
         </div>
 
-        <div>
-          <label class="block text-xs font-semibold text-muted-color uppercase mb-1.5">Description / Work Notes</label>
-          <textarea
-            pInputText
-            [(ngModel)]="editingTicket.description"
-            rows="3"
-            class="w-full"
-          ></textarea>
-        </div>
-      </div>
+        <!-- Status, Priority, Assignee -->
+        <div class="grid grid-cols-12 gap-3">
+          <!-- Status -->
+          <div class="col-span-12 sm:col-span-4">
+            <label class="block text-xs font-semibold text-muted-color uppercase mb-1">
+              Status <span class="text-red-500">*</span>
+            </label>
+            <p-select
+              [options]="statusOptions"
+              formControlName="statusId"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Select Status"
+              styleClass="w-full text-sm"
+              [ngClass]="{ 'ng-invalid ng-dirty': isCreateFieldInvalid('statusId') }"
+            ></p-select>
+            <small *ngIf="isCreateFieldInvalid('statusId')" class="text-red-500 text-xs mt-0.5 block">Status is required.</small>
+          </div>
 
-      <ng-template #footer>
-        <p-button
-          label="Cancel"
-          icon="pi pi-times"
-          [text]="true"
-          (click)="editDialogVisible = false"
-        ></p-button>
-        <p-button
-          label="Save Changes"
-          icon="pi pi-check"
-          (click)="saveEditedTicket()"
-          styleClass="bg-orange-500 hover:bg-orange-600 border-none font-semibold"
-        ></p-button>
-      </ng-template>
+          <!-- Priority -->
+          <div class="col-span-12 sm:col-span-4">
+            <label class="block text-xs font-semibold text-muted-color uppercase mb-1">
+              Priority <span class="text-red-500">*</span>
+            </label>
+            <p-select
+              [options]="priorityOptions"
+              formControlName="priorityId"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Select Priority"
+              styleClass="w-full text-sm"
+              [ngClass]="{ 'ng-invalid ng-dirty': isCreateFieldInvalid('priorityId') }"
+            ></p-select>
+            <small *ngIf="isCreateFieldInvalid('priorityId')" class="text-red-500 text-xs mt-0.5 block">Priority is required.</small>
+          </div>
+
+          <!-- Assignee -->
+          <div class="col-span-12 sm:col-span-4">
+            <label class="block text-xs font-semibold text-muted-color uppercase mb-1">
+              Technician / Assignee <span class="text-red-500">*</span>
+            </label>
+            <p-select
+              [options]="assigneeOptions"
+              formControlName="assigneeId"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Select Technician"
+              [filter]="true"
+              filterBy="label"
+              styleClass="w-full text-sm"
+              [ngClass]="{ 'ng-invalid ng-dirty': isCreateFieldInvalid('assigneeId') }"
+            ></p-select>
+            <small *ngIf="isCreateFieldInvalid('assigneeId')" class="text-red-500 text-xs mt-0.5 block">Technician is required.</small>
+          </div>
+        </div>
+
+        <!-- Contact Phone & Email -->
+        <div class="grid grid-cols-12 gap-3">
+          <div class="col-span-12 sm:col-span-6">
+            <label class="block text-xs font-semibold text-muted-color uppercase mb-1">
+              Contact Phone <span class="text-red-500">*</span>
+            </label>
+            <input
+              pInputText
+              formControlName="contactPhone"
+              placeholder="+1 (555) 000-0000"
+              class="w-full text-sm"
+              [ngClass]="{ 'ng-invalid ng-dirty': isCreateFieldInvalid('contactPhone') }"
+            />
+            <small *ngIf="isCreateFieldInvalid('contactPhone')" class="text-red-500 text-xs mt-0.5 block">Phone number is required.</small>
+          </div>
+
+          <div class="col-span-12 sm:col-span-6">
+            <label class="block text-xs font-semibold text-muted-color uppercase mb-1">
+              Contact Email <span class="text-red-500">*</span>
+            </label>
+            <input
+              pInputText
+              type="email"
+              formControlName="contactEmail"
+              placeholder="user@example.com"
+              class="w-full text-sm"
+              [ngClass]="{ 'ng-invalid ng-dirty': isCreateFieldInvalid('contactEmail') }"
+            />
+            <small *ngIf="isCreateFieldInvalid('contactEmail')" class="text-red-500 text-xs mt-0.5 block">Valid email is required.</small>
+          </div>
+        </div>
+
+        <!-- Description -->
+        <div>
+          <label class="block text-xs font-semibold text-muted-color uppercase mb-1">
+            Service Description <span class="text-red-500">*</span>
+          </label>
+          <textarea
+            pTextarea
+            formControlName="description"
+            rows="3"
+            placeholder="Provide diagnostic notes, symptoms, or maintenance instructions..."
+            class="w-full text-sm"
+            [ngClass]="{ 'ng-invalid ng-dirty': isCreateFieldInvalid('description') }"
+          ></textarea>
+          <small *ngIf="isCreateFieldInvalid('description')" class="text-red-500 text-xs mt-0.5 block">Description is required.</small>
+        </div>
+
+        <!-- Dialog Actions -->
+        <div class="flex items-center justify-end gap-2 pt-4 border-t border-surface-200 dark:border-surface-700">
+          <p-button
+            label="Cancel"
+            [outlined]="true"
+            severity="secondary"
+            size="small"
+            (click)="createDialogVisible = false"
+            [disabled]="isSubmitting"
+          ></p-button>
+          <p-button
+            type="submit"
+            label="Create Service Order"
+            icon="pi pi-check"
+            size="small"
+            [loading]="isSubmitting"
+            styleClass="bg-orange-500 hover:bg-orange-600 border-none text-white font-semibold"
+          ></p-button>
+        </div>
+      </form>
     </p-dialog>
 
-    <!-- ===================================================================== -->
-    <!-- NEW HEALTH AUDIT DIALOG -->
-    <!-- ===================================================================== -->
+    <!-- ========================================================= -->
+    <!-- 7. EDIT SERVICE MODAL (PUT /api/tickets/{ticketId})       -->
+    <!-- ========================================================= -->
     <p-dialog
-      [(visible)]="healthAuditDialogVisible"
-      header="Bicycle Health Audit & Passport Generator"
+      header="Edit Service Ticket"
+      [(visible)]="editDialogVisible"
       [modal]="true"
-      [style]="{ width: '600px' }"
+      [style]="{ width: '600px', maxWidth: '95vw' }"
+      [draggable]="false"
+      [resizable]="false"
     >
-      <div class="space-y-4 pt-2">
-        <div class="p-3 bg-surface-50 dark:bg-surface-800 rounded-lg text-xs text-muted-color">
-          Assign 🟢 GOOD, 🟡 ATTENTION REQUIRED, or 🔴 REPLACE/REPAIR for key components to calculate the health score and issue a persistent Digital Passport.
+      <form *ngIf="selectedTicketForEdit" [formGroup]="editForm" (ngSubmit)="submitEdit()" class="space-y-4 pt-2">
+        <!-- Ticket Context Header -->
+        <div class="p-3 rounded-lg bg-surface-100 dark:bg-surface-800 flex items-center justify-between text-xs">
+          <div>
+            <span class="text-muted-color">Editing Ticket:</span>
+            <span class="font-mono font-bold ml-1 text-surface-900 dark:text-surface-0">#{{ selectedTicketForEdit.id.substring(0, 8) | uppercase }}</span>
+          </div>
+          <div>
+            <span class="text-muted-color">Customer:</span>
+            <span class="font-semibold ml-1 text-surface-900 dark:text-surface-0">{{ selectedTicketForEdit.customerName }}</span>
+          </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-semibold text-muted-color uppercase mb-1">Customer Name</label>
-            <input pInputText [(ngModel)]="newAuditOwnerName" placeholder="e.g. Samantha Reed" class="w-full text-xs" />
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-muted-color uppercase mb-1">Bicycle Model</label>
-            <input pInputText [(ngModel)]="newAuditBikeModel" placeholder="e.g. Cannondale Topstone" class="w-full text-xs" />
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-muted-color uppercase mb-1">Serial Number</label>
-            <input pInputText [(ngModel)]="newAuditSerial" placeholder="e.g. CM219084A09" class="w-full text-xs" />
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-muted-color uppercase mb-1">Bicycle Type</label>
+        <!-- Status & Priority -->
+        <div class="grid grid-cols-12 gap-3">
+          <!-- Status -->
+          <div class="col-span-12 sm:col-span-6">
+            <label class="block text-xs font-semibold text-muted-color uppercase mb-1">Status</label>
             <p-select
-              [options]="['Road', 'Mountain', 'Gravel', 'Electric', 'Hybrid', 'BMX']"
-              [(ngModel)]="newAuditBikeType"
-              styleClass="w-full text-xs"
+              [options]="statusOptions"
+              formControlName="statusId"
+              optionLabel="label"
+              optionValue="value"
+              styleClass="w-full text-sm"
+            ></p-select>
+          </div>
+
+          <!-- Priority -->
+          <div class="col-span-12 sm:col-span-6">
+            <label class="block text-xs font-semibold text-muted-color uppercase mb-1">Priority</label>
+            <p-select
+              [options]="priorityOptions"
+              formControlName="priorityId"
+              optionLabel="label"
+              optionValue="value"
+              styleClass="w-full text-sm"
             ></p-select>
           </div>
         </div>
 
-        <div class="border-t border-surface-200 dark:border-surface-700 pt-3 space-y-3">
-          <div class="text-xs font-bold uppercase text-muted-color">Audit Component Status:</div>
+        <!-- Assignee -->
+        <div>
+          <label class="block text-xs font-semibold text-muted-color uppercase mb-1">Assigned Technician</label>
+          <p-select
+            [options]="assigneeOptions"
+            formControlName="assigneeId"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Select Technician"
+            [filter]="true"
+            filterBy="label"
+            styleClass="w-full text-sm"
+          ></p-select>
+        </div>
 
-          <div *ngFor="let item of auditItems" class="flex items-center justify-between p-2 rounded-lg bg-surface-50 dark:bg-surface-800">
-            <span class="text-xs font-semibold text-surface-800 dark:text-surface-100">{{ item.componentName }}</span>
-            <div class="flex items-center gap-1.5">
-              <button
-                type="button"
-                (click)="item.status = 'GOOD'"
-                [ngClass]="item.status === 'GOOD' ? 'bg-emerald-500 text-white font-bold' : 'bg-surface-200 dark:bg-surface-700 text-surface-700 dark:text-surface-300'"
-                class="px-2 py-1 rounded text-[11px] transition-all"
-              >
-                🟢 Good
-              </button>
-              <button
-                type="button"
-                (click)="item.status = 'ATTENTION_REQUIRED'"
-                [ngClass]="item.status === 'ATTENTION_REQUIRED' ? 'bg-amber-500 text-white font-bold' : 'bg-surface-200 dark:bg-surface-700 text-surface-700 dark:text-surface-300'"
-                class="px-2 py-1 rounded text-[11px] transition-all"
-              >
-                🟡 Attention
-              </button>
-              <button
-                type="button"
-                (click)="item.status = 'REPLACE_OR_REPAIR'"
-                [ngClass]="item.status === 'REPLACE_OR_REPAIR' ? 'bg-red-500 text-white font-bold' : 'bg-surface-200 dark:bg-surface-700 text-surface-700 dark:text-surface-300'"
-                class="px-2 py-1 rounded text-[11px] transition-all"
-              >
-                🔴 Replace
-              </button>
+        <!-- Phone & Email -->
+        <div class="grid grid-cols-12 gap-3">
+          <div class="col-span-12 sm:col-span-6">
+            <label class="block text-xs font-semibold text-muted-color uppercase mb-1">Contact Phone</label>
+            <input
+              pInputText
+              formControlName="contactPhone"
+              class="w-full text-sm"
+            />
+          </div>
+
+          <div class="col-span-12 sm:col-span-6">
+            <label class="block text-xs font-semibold text-muted-color uppercase mb-1">Contact Email</label>
+            <input
+              pInputText
+              type="email"
+              formControlName="contactEmail"
+              class="w-full text-sm"
+            />
+          </div>
+        </div>
+
+        <!-- Description -->
+        <div>
+          <label class="block text-xs font-semibold text-muted-color uppercase mb-1">Description / Notes</label>
+          <textarea
+            pTextarea
+            formControlName="description"
+            rows="4"
+            class="w-full text-sm"
+          ></textarea>
+        </div>
+
+        <!-- Dialog Actions -->
+        <div class="flex items-center justify-end gap-2 pt-4 border-t border-surface-200 dark:border-surface-700">
+          <p-button
+            label="Cancel"
+            [outlined]="true"
+            severity="secondary"
+            size="small"
+            (click)="editDialogVisible = false"
+            [disabled]="isSubmitting"
+          ></p-button>
+          <p-button
+            type="submit"
+            label="Save Changes"
+            icon="pi pi-check"
+            size="small"
+            [loading]="isSubmitting"
+            styleClass="bg-orange-500 hover:bg-orange-600 border-none text-white font-semibold"
+          ></p-button>
+        </div>
+      </form>
+    </p-dialog>
+
+    <!-- ========================================================= -->
+    <!-- 8. VIEW SERVICE DETAILS MODAL                             -->
+    <!-- ========================================================= -->
+    <p-dialog
+      header="Service Ticket Details"
+      [(visible)]="viewDialogVisible"
+      [modal]="true"
+      [style]="{ width: '600px', maxWidth: '95vw' }"
+      [draggable]="false"
+      [resizable]="false"
+    >
+      <div *ngIf="selectedTicketForView" class="space-y-4 pt-2">
+        <!-- Top Info Header -->
+        <div class="flex items-center justify-between p-3.5 rounded-xl bg-surface-100 dark:bg-surface-800 border border-surface-200 dark:border-surface-700">
+          <div>
+            <div class="text-[11px] text-muted-color uppercase font-semibold">Service Ticket ID</div>
+            <div class="font-mono text-sm font-bold text-surface-900 dark:text-surface-0 mt-0.5">
+              {{ selectedTicketForView.id }}
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <p-tag [value]="selectedTicketForView.priority || 'Medium'" [severity]="getPrioritySeverity(selectedTicketForView.priority)"></p-tag>
+            <p-tag [value]="selectedTicketForView.status || 'New'" [severity]="getStatusSeverity(selectedTicketForView.status)"></p-tag>
+          </div>
+        </div>
+
+        <!-- Details Grid -->
+        <div class="grid grid-cols-2 gap-4 text-xs">
+          <!-- Customer -->
+          <div class="p-3 rounded-lg bg-surface-50 dark:bg-surface-800/60 border border-surface-200 dark:border-surface-700">
+            <span class="text-muted-color font-semibold uppercase block mb-1">Customer Details</span>
+            <div class="font-bold text-sm text-surface-900 dark:text-surface-0">{{ selectedTicketForView.customerName }}</div>
+            <div *ngIf="selectedTicketForView.companyName" class="text-muted-color mt-0.5">{{ selectedTicketForView.companyName }}</div>
+            <div class="mt-2 text-surface-700 dark:text-surface-300 flex items-center gap-1.5">
+              <i class="pi pi-phone text-[10px]"></i>
+              <span>{{ selectedTicketForView.contactPhone || 'No phone recorded' }}</span>
+            </div>
+            <div *ngIf="selectedTicketForView.contactEmail" class="text-surface-700 dark:text-surface-300 flex items-center gap-1.5 mt-1">
+              <i class="pi pi-envelope text-[10px]"></i>
+              <span>{{ selectedTicketForView.contactEmail }}</span>
+            </div>
+          </div>
+
+          <!-- Bicycle -->
+          <div class="p-3 rounded-lg bg-surface-50 dark:bg-surface-800/60 border border-surface-200 dark:border-surface-700">
+            <span class="text-muted-color font-semibold uppercase block mb-1">Bicycle Profile</span>
+            <div class="font-bold text-sm text-surface-900 dark:text-surface-0">{{ selectedTicketForView.cycleModel || 'Cycle' }}</div>
+            <div *ngIf="selectedTicketForView.serialNumber" class="text-muted-color font-mono mt-0.5">S/N: {{ selectedTicketForView.serialNumber }}</div>
+            <div class="mt-2 text-surface-700 dark:text-surface-300">
+              <span class="text-muted-color">Assigned Staff:</span>
+              <div class="font-medium mt-0.5 text-surface-900 dark:text-surface-0">
+                {{ selectedTicketForView.assigneeName || 'Unassigned' }}
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <ng-template #footer>
-        <p-button label="Cancel" [text]="true" (click)="healthAuditDialogVisible = false"></p-button>
-        <p-button label="Generate Passport" icon="pi pi-check" (click)="saveHealthAudit()" styleClass="bg-cyan-600 hover:bg-cyan-700 border-none font-semibold text-white"></p-button>
-      </ng-template>
+        <!-- Description -->
+        <div class="p-3.5 rounded-lg bg-surface-50 dark:bg-surface-800/60 border border-surface-200 dark:border-surface-700 text-xs">
+          <span class="text-muted-color font-semibold uppercase block mb-1.5">Service Description / Diagnostic Notes</span>
+          <p class="text-surface-800 dark:text-surface-200 whitespace-pre-line leading-relaxed">
+            {{ selectedTicketForView.description || 'No detailed description provided.' }}
+          </p>
+        </div>
+
+        <!-- QR Service Information Section -->
+        <div class="p-3.5 rounded-lg bg-surface-50 dark:bg-surface-800/60 border border-surface-200 dark:border-surface-700 text-xs">
+          <div class="flex items-center justify-between pb-2 mb-2 border-b border-surface-200 dark:border-surface-700">
+            <div class="font-bold text-surface-900 dark:text-surface-0 flex items-center gap-1.5 uppercase text-xs">
+              <i class="pi pi-qrcode text-orange-500"></i>
+              <span>QR Service Information</span>
+            </div>
+            <p-button
+              *ngIf="viewQrDataUrl && selectedTicketForView.cycleId"
+              label="Print QR"
+              icon="pi pi-print"
+              size="small"
+              [outlined]="true"
+              severity="secondary"
+              (click)="printQrCode()"
+              pTooltip="Print 3cm x 3cm bicycle QR code"
+            ></p-button>
+          </div>
+
+          <div *ngIf="selectedTicketForView.cycleId; else noCycleIdTpl" class="flex flex-col sm:flex-row items-center gap-3.5">
+            <!-- QR Preview Image -->
+            <div class="bg-white p-2 rounded-lg border border-surface-200 dark:border-surface-700 shadow-sm shrink-0 flex items-center justify-center">
+              <img *ngIf="viewQrDataUrl" [src]="viewQrDataUrl" alt="Cycle Service QR" class="w-20 h-20 object-contain" />
+              <div *ngIf="!viewQrDataUrl && isGeneratingQr" class="w-20 h-20 flex items-center justify-center text-muted-color">
+                <i class="pi pi-spin pi-spinner text-base"></i>
+              </div>
+            </div>
+
+            <!-- QR Details & URL -->
+            <div class="flex-1 text-center sm:text-left space-y-1">
+              <div class="font-semibold text-surface-900 dark:text-surface-0">
+                Scan to view bicycle service information
+              </div>
+              <div class="text-[11px] text-muted-color">
+                Cycle ID: <span class="font-mono font-medium text-surface-800 dark:text-surface-200">{{ selectedTicketForView.cycleId }}</span>
+              </div>
+              <div class="p-1.5 rounded bg-surface-100 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 font-mono text-[10px] break-all select-all text-surface-700 dark:text-surface-300">
+                {{ viewQrUrl }}
+              </div>
+            </div>
+          </div>
+
+          <ng-template #noCycleIdTpl>
+            <div class="text-xs text-muted-color italic py-2 text-center">
+              No cycle ID associated with this ticket. QR code cannot be generated.
+            </div>
+          </ng-template>
+        </div>
+
+        <!-- Timestamps -->
+        <div class="flex items-center justify-between text-[11px] text-muted-color px-1">
+          <div>
+            <span>Created: </span>
+            <span class="font-medium text-surface-700 dark:text-surface-300">{{ selectedTicketForView.createdAt | date:'medium' }}</span>
+          </div>
+          <div *ngIf="selectedTicketForView.updatedAt">
+            <span>Last Updated: </span>
+            <span class="font-medium text-surface-700 dark:text-surface-300">{{ selectedTicketForView.updatedAt | date:'medium' }}</span>
+          </div>
+        </div>
+
+        <!-- Dialog Action -->
+        <div class="flex items-center justify-end gap-2 pt-4 border-t border-surface-200 dark:border-surface-700">
+          <p-button
+            label="Close"
+            severity="secondary"
+            [outlined]="true"
+            size="small"
+            (click)="viewDialogVisible = false"
+          ></p-button>
+          <p-button
+            label="Edit Ticket"
+            icon="pi pi-pencil"
+            size="small"
+            styleClass="bg-orange-500 hover:bg-orange-600 border-none text-white font-semibold"
+            (click)="viewDialogVisible = false; openEditDialog(selectedTicketForView)"
+          ></p-button>
+        </div>
+      </div>
     </p-dialog>
   `
 })
 export class ServicesListComponent implements OnInit {
-  dataService = inject(CycleDataService);
-  catalogService = inject(FreewheelCatalogService);
-  authService = inject(AuthService);
-  confirmationService = inject(ConfirmationService);
-  messageService = inject(MessageService);
-  router = inject(Router);
+  private fb = inject(FormBuilder);
+  private ticketService = inject(TicketService);
+  private miscService = inject(MiscService);
+  private dataService = inject(CycleDataService);
+  private configService = inject(AppConfigService);
+  private notificationService = inject(AppNotificationService);
 
-  // Active Main View Tab: 'catalog' | 'tickets' | 'passports'
-  activeTab: 'catalog' | 'tickets' | 'passports' = 'catalog';
+  // Reactive state
+  tickets = this.ticketService.tickets;
+  isLoading = this.ticketService.isLoading;
+  loadError = signal<boolean>(false);
+  loadErrorMessage = signal<string>('');
 
-  // Catalog State
-  selectedDepartment: ServiceDepartment | 'All' = 'All';
-  selectedBikeTypeFilter: string = 'All';
-  catalogSearchQuery: string = '';
-  selectedCatalogService: ServiceCatalogItem | null = null;
-  sopDrawerVisible: boolean = false;
+  // Filters state
+  selectedStatusFilter: string | null = null;
+  selectedTechnicianFilter: string | null = null;
+  selectedPriorityFilter: string | null = null;
 
-  // Estimator Widget State
-  estimatorServiceId: string = 'FWF-02';
-  estimatorBikeType: BicycleType = 'Road';
-  estimatorDoorstep: boolean = false;
+  statusFilterOptions: { label: string; value: string | null }[] = [];
+  technicianFilterOptions: { label: string; value: string | null }[] = [];
+  priorityFilterOptions: { label: string; value: string | null }[] = [];
 
-  bikeTypeFilterOptions: string[] = ['All', 'Road', 'Mountain', 'Gravel', 'Electric', 'Hybrid', 'BMX'];
+  // Form options
+  customerOptions: { label: string; value: string }[] = [];
+  cycleOptions: { label: string; value: string }[] = [];
+  statusOptions: { label: string; value: string }[] = [];
+  priorityOptions: { label: string; value: string }[] = [];
+  assigneeOptions: { label: string; value: string }[] = [];
 
-  // Tickets Table State
-  searchQuery: string = '';
-  selectedCategory: string | null = null;
-  selectedStatus: string | null = null;
-
-  selectedTicket: ServiceTicket | null = null;
-  drawerVisible = false;
-
-  editingTicket: ServiceTicket | null = null;
+  // Dialog Controls
+  createDialogVisible = false;
   editDialogVisible = false;
+  viewDialogVisible = false;
+  isSubmitting = false;
 
-  // Health Audit Dialog State
-  healthAuditDialogVisible: boolean = false;
-  newAuditOwnerName: string = '';
-  newAuditBikeModel: string = '';
-  newAuditSerial: string = '';
-  newAuditBikeType: BicycleType = 'Road';
-  auditItems: ComponentHealthItem[] = [
-    { componentName: 'Frame & Fork Integrity', category: 'Frame', status: 'GOOD' },
-    { componentName: 'Wheels & Spoke Tension', category: 'Wheels', status: 'GOOD' },
-    { componentName: 'Drivetrain & Chain Elongation', category: 'Drivetrain', status: 'GOOD' },
-    { componentName: 'Brake Pads & Hydraulic Fluid', category: 'Brakes', status: 'GOOD' },
-    { componentName: 'Bearings (BB, Headset, Hubs)', category: 'Bearings', status: 'GOOD' }
-  ];
+  // QR Code state for View Details Modal
+  viewQrDataUrl: string | null = null;
+  viewQrUrl: string = '';
+  isGeneratingQr = false;
 
-  categoryOptions = [
-    { label: 'Bike Service', value: 'Bike Service' },
-    { label: 'Performance & Race', value: 'Performance & Race' },
-    { label: 'Bike Fit & Ergonomics', value: 'Bike Fit & Ergonomics' },
-    { label: 'Suspension Lab', value: 'Suspension Lab' },
-    { label: 'Wheels & Tyres', value: 'Wheels & Tyres' },
-    { label: 'Components & Drivetrain', value: 'Components & Drivetrain' },
-    { label: 'Mobile & Event Support', value: 'Mobile & Event Support' },
-    { label: 'Inspection & Digital', value: 'Inspection & Digital' }
-  ];
+  selectedTicketForEdit: TicketResponseDto | null = null;
+  selectedTicketForView: TicketResponseDto | null = null;
 
-  statusOptions = [
-    { label: 'Waiting', value: 'Waiting' },
-    { label: 'Assigned', value: 'Assigned' },
-    { label: 'In Progress', value: 'In Progress' },
-    { label: 'Completed', value: 'Completed' },
-    { label: 'Cancelled', value: 'Cancelled' }
-  ];
+  createForm!: FormGroup;
+  editForm!: FormGroup;
 
-  priorityOptions = [
-    { label: 'Low', value: 'Low' },
-    { label: 'Medium', value: 'Medium' },
-    { label: 'High', value: 'High' },
-    { label: 'Urgent', value: 'Urgent' }
-  ];
+  // Computed filtered tickets
+  filteredTickets = computed(() => {
+    const list = this.tickets();
+    const statusFilter = this.selectedStatusFilter;
+    const techFilter = this.selectedTechnicianFilter;
+    const priorityFilter = this.selectedPriorityFilter;
 
-  technicianOptions = [
-    { id: 'TECH-001', name: 'Alex Rivera' },
-    { id: 'TECH-002', name: 'David Chen' },
-    { id: 'TECH-003', name: 'Sara Jenkins' },
-    { id: 'TECH-004', name: 'Michael Scott' }
-  ];
+    return list.filter((ticket) => {
+      // 1. Status Filter
+      if (statusFilter && ticket.statusId !== statusFilter && ticket.status !== statusFilter) {
+        return false;
+      }
 
-  ngOnInit(): void {}
+      // 2. Technician Filter
+      if (techFilter && ticket.assigneeId !== techFilter) {
+        return false;
+      }
 
-  // Filtered Services for Catalog Tab
-  get filteredCatalogServices(): ServiceCatalogItem[] {
-    return this.catalogService.services().filter(s => {
-      const matchesDept = this.selectedDepartment === 'All' || s.department === this.selectedDepartment;
-      const matchesBike = this.selectedBikeTypeFilter === 'All' || s.compatibleBikeTypes.includes(this.selectedBikeTypeFilter as BicycleType);
-      const matchesSearch = !this.catalogSearchQuery ||
-        s.name.toLowerCase().includes(this.catalogSearchQuery.toLowerCase()) ||
-        s.code.toLowerCase().includes(this.catalogSearchQuery.toLowerCase()) ||
-        s.description.toLowerCase().includes(this.catalogSearchQuery.toLowerCase());
+      // 3. Priority Filter
+      if (priorityFilter && ticket.priorityId !== priorityFilter && ticket.priority !== priorityFilter) {
+        return false;
+      }
 
-      return matchesDept && matchesBike && matchesSearch;
+      return true;
+    });
+  });
+
+  // Computed Metrics from real API data
+  metrics = computed(() => {
+    const list = this.tickets();
+    const total = list.length;
+    let newCount = 0;
+    let assigned = 0;
+    let inProgress = 0;
+    let completed = 0;
+
+    for (const t of list) {
+      const s = (t.status || '').toLowerCase();
+      if (s.includes('new') || s.includes('waiting')) {
+        newCount++;
+      } else if (s.includes('assigned')) {
+        assigned++;
+      } else if (s.includes('progress') || s.includes('in progress')) {
+        inProgress++;
+      } else if (s.includes('completed') || s.includes('done')) {
+        completed++;
+      }
+    }
+
+    return { total, newCount, assigned, inProgress, completed };
+  });
+
+  get hasActiveFilters(): boolean {
+    return !!(this.selectedStatusFilter || this.selectedTechnicianFilter || this.selectedPriorityFilter);
+  }
+
+  ngOnInit(): void {
+    this.initForms();
+    this.loadData();
+  }
+
+  private initForms(): void {
+    this.createForm = this.fb.group({
+      customerId: ['', Validators.required],
+      cycleId: ['', Validators.required],
+      companyName: [''],
+      statusId: ['', Validators.required],
+      priorityId: ['', Validators.required],
+      assigneeId: ['', Validators.required],
+      contactPhone: ['', Validators.required],
+      contactEmail: ['', [Validators.required, Validators.email]],
+      description: ['', Validators.required]
+    });
+
+    this.editForm = this.fb.group({
+      statusId: ['', Validators.required],
+      priorityId: ['', Validators.required],
+      assigneeId: [''],
+      contactPhone: [''],
+      contactEmail: ['', Validators.email],
+      description: ['']
     });
   }
 
-  // Filtered Tickets for Tickets Tab
-  get filteredTickets(): ServiceTicket[] {
-    return this.dataService.tickets().filter(ticket => {
-      const matchesSearch = !this.searchQuery ||
-        ticket.id.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-        ticket.customerName.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-        ticket.cycleModel.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-        ticket.serialNumber.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-        (ticket.companyName && ticket.companyName.toLowerCase().includes(this.searchQuery.toLowerCase()));
+  loadData(): void {
+    this.loadError.set(false);
+    this.loadErrorMessage.set('');
 
-      const matchesCategory = !this.selectedCategory || ticket.category === this.selectedCategory || ticket.department === this.selectedCategory;
-      const matchesStatus = !this.selectedStatus || ticket.status === this.selectedStatus;
-
-      return matchesSearch && matchesCategory && matchesStatus;
+    // Fetch Tickets from API
+    this.ticketService.getTickets().subscribe({
+      next: () => {
+        // Tickets loaded silently
+      },
+      error: (err) => {
+        this.loadError.set(true);
+        this.loadErrorMessage.set(err?.message || 'Failed to connect to /api/tickets');
+        this.notificationService.handleApiError('load service tickets', err, 'Unable to load service tickets. Please try again.');
+      }
     });
-  }
 
-  getCalculatedEstimate() {
-    return this.catalogService.calculateQuote(
-      this.estimatorServiceId,
-      this.estimatorBikeType,
-      this.estimatorDoorstep
-    );
-  }
+    // Fetch Misc Lookups
+    this.miscService.loadAllLookups().subscribe({
+      next: (lookups) => {
+        // 1. Statuses
+        if (lookups.statuses && lookups.statuses.length > 0) {
+          this.statusOptions = lookups.statuses.map(s => ({ label: s.name, value: s.id }));
+          this.statusFilterOptions = [
+            { label: 'All Statuses', value: null },
+            ...lookups.statuses.map(s => ({ label: s.name, value: s.id }))
+          ];
+        }
 
-  viewSOP(service: ServiceCatalogItem): void {
-    this.selectedCatalogService = service;
-    this.sopDrawerVisible = true;
-  }
+        // 2. Priorities
+        if (lookups.priorities && lookups.priorities.length > 0) {
+          this.priorityOptions = lookups.priorities.map(p => ({ label: p.name, value: p.id }));
+          this.priorityFilterOptions = [
+            { label: 'All Priorities', value: null },
+            ...lookups.priorities.map(p => ({ label: p.name, value: p.id }))
+          ];
+        }
 
-  bookService(service: ServiceCatalogItem): void {
-    this.sopDrawerVisible = false;
-    this.router.navigate(['/services/new'], {
-      queryParams: {
-        serviceId: service.id,
-        category: service.department,
-        price: service.basePrice,
-        code: service.code
+        // 3. Technicians / Users
+        if (lookups.users && lookups.users.length > 0) {
+          this.assigneeOptions = lookups.users.map(u => ({
+            label: `${(u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : u.email)} (${u.email})`,
+            value: u.id
+          }));
+          this.technicianFilterOptions = [
+            { label: 'All Technicians', value: null },
+            ...lookups.users.map(u => ({
+              label: (u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : u.email) || u.id,
+              value: u.id
+            }))
+          ];
+        }
+
+        // 4. Customers
+        if (lookups.customers && lookups.customers.length > 0) {
+          this.customerOptions = lookups.customers.map(c => ({
+            label: `${c.name} (${c.phoneNumber || 'No Phone'})`,
+            value: c.id
+          }));
+        }
+
+        this.populateCycleOptions();
       }
     });
   }
 
-  viewPassport(p: DigitalBicyclePassport): void {
-    this.messageService.add({
-      severity: 'info',
-      summary: `Passport #${p.id}`,
-      detail: `${p.brand} ${p.model} — Overall Health Score: ${p.overallHealthScore}%`
+  private populateCycleOptions(customerId?: string): void {
+    const allBikes = this.dataService.bicycles();
+
+    if (customerId) {
+      const customerBikes = allBikes.filter(b => b.customerId === customerId);
+      if (customerBikes.length > 0) {
+        this.cycleOptions = customerBikes.map(b => ({
+          label: `${b.brand} ${b.model} (${b.type || 'Cycle'}) [S/N: ${b.serialNumber || b.frameNumber || 'N/A'}]`,
+          value: b.id
+        }));
+      } else {
+        this.cycleOptions = [
+          { label: `Primary Cycle (Customer ID: ${customerId.substring(0, 8)})`, value: customerId },
+          ...allBikes.map(b => ({
+            label: `${b.brand} ${b.model} (${b.customerName || 'Registered Bike'})`,
+            value: b.id
+          }))
+        ];
+      }
+    } else {
+      this.cycleOptions = allBikes.map(b => ({
+        label: `${b.brand} ${b.model} (${b.customerName || 'Registered Bike'}) [${b.id}]`,
+        value: b.id
+      }));
+    }
+  }
+
+  onCustomerSelect(customerId: string): void {
+    const backendCust = this.miscService.customers().find(c => c.id === customerId);
+    const localCust = this.dataService.customers().find(c => c.id === customerId);
+
+    const phone = backendCust?.phoneNumber || localCust?.phone || '';
+    const email = backendCust?.email || localCust?.email || '';
+    const company = localCust?.companyName || '';
+
+    this.createForm.patchValue({
+      contactPhone: phone,
+      contactEmail: email,
+      companyName: company
+    });
+
+    this.populateCycleOptions(customerId);
+    if (this.cycleOptions.length > 0) {
+      this.createForm.patchValue({ cycleId: this.cycleOptions[0].value });
+    }
+  }
+
+  applyFilters(): void {
+    // triggers computed filteredTickets
+  }
+
+  clearFilters(): void {
+    this.selectedStatusFilter = null;
+    this.selectedTechnicianFilter = null;
+    this.selectedPriorityFilter = null;
+  }
+
+  openCreateDialog(): void {
+    // Fetch fresh lookups from Misc API whenever Create is clicked
+    this.miscService.loadAllLookups().subscribe({
+      next: (lookups) => {
+        if (lookups.statuses && lookups.statuses.length > 0) {
+          this.statusOptions = lookups.statuses.map(s => ({ label: s.name, value: s.id }));
+        }
+        if (lookups.priorities && lookups.priorities.length > 0) {
+          this.priorityOptions = lookups.priorities.map(p => ({ label: p.name, value: p.id }));
+        }
+        if (lookups.users && lookups.users.length > 0) {
+          this.assigneeOptions = lookups.users.map(u => ({
+            label: `${(u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : u.email)} (${u.email})`,
+            value: u.id
+          }));
+        }
+        if (lookups.customers && lookups.customers.length > 0) {
+          this.customerOptions = lookups.customers.map(c => ({
+            label: `${c.name} (${c.phoneNumber || 'No Phone'})`,
+            value: c.id
+          }));
+        }
+        this.populateCycleOptions();
+
+        this.createForm.reset({
+          statusId: this.statusOptions.length > 0 ? this.statusOptions[0].value : '',
+          priorityId: this.priorityOptions.length > 0 ? this.priorityOptions[0].value : '',
+          assigneeId: this.assigneeOptions.length > 0 ? this.assigneeOptions[0].value : ''
+        });
+        this.createDialogVisible = true;
+      },
+      error: () => {
+        this.createForm.reset({
+          statusId: this.statusOptions.length > 0 ? this.statusOptions[0].value : '',
+          priorityId: this.priorityOptions.length > 0 ? this.priorityOptions[0].value : '',
+          assigneeId: this.assigneeOptions.length > 0 ? this.assigneeOptions[0].value : ''
+        });
+        this.createDialogVisible = true;
+      }
     });
   }
 
-  openHealthAuditDialog(): void {
-    this.newAuditOwnerName = '';
-    this.newAuditBikeModel = '';
-    this.newAuditSerial = '';
-    this.newAuditBikeType = 'Road';
-    this.auditItems = [
-      { componentName: 'Frame & Fork Integrity', category: 'Frame', status: 'GOOD', measuredWear: '0% wear' },
-      { componentName: 'Wheels & Spoke Tension', category: 'Wheels', status: 'GOOD', measuredWear: '<0.2mm lateral' },
-      { componentName: 'Drivetrain & Chain Stretch', category: 'Drivetrain', status: 'GOOD', measuredWear: '0.25% elongation' },
-      { componentName: 'Brakes & Hydraulic Seals', category: 'Brakes', status: 'GOOD', measuredWear: '75% pad life' },
-      { componentName: 'Bearings (BB, Headset, Hubs)', category: 'Bearings', status: 'GOOD', measuredWear: 'Smooth play-free' }
-    ];
-    this.healthAuditDialogVisible = true;
+  isCreateFieldInvalid(fieldName: string): boolean {
+    const f = this.createForm.get(fieldName);
+    return !!(f && f.invalid && (f.dirty || f.touched || this.isSubmitting));
   }
 
-  saveHealthAudit(): void {
-    if (!this.newAuditOwnerName || !this.newAuditBikeModel || !this.newAuditSerial) {
-      this.messageService.add({
-        severity: 'error',
-        summary: 'Missing Information',
-        detail: 'Please fill in customer name, bicycle model, and serial number.'
-      });
+  submitCreate(): void {
+    if (this.createForm.invalid) {
+      this.createForm.markAllAsTouched();
+      this.notificationService.showError('Incomplete Form', 'Please fill in all required fields.');
       return;
     }
 
-    // Calculate score based on statuses
-    let score = 100;
-    let hasReplace = false;
-    let hasAttention = false;
+    this.isSubmitting = true;
+    const val = this.createForm.value;
 
-    for (const item of this.auditItems) {
-      if (item.status === 'REPLACE_OR_REPAIR') {
-        score -= 25;
-        hasReplace = true;
-      } else if (item.status === 'ATTENTION_REQUIRED') {
-        score -= 10;
-        hasAttention = true;
-      }
-    }
-    score = Math.max(0, score);
-
-    const raceReadyStatus = hasReplace ? 'FAIL' : (hasAttention ? 'CONDITIONAL' : 'PASS');
-    const newPassport: DigitalBicyclePassport = {
-      id: `PASSPORT-${Math.floor(1000 + Math.random() * 9000)}`,
-      bikeId: `BIKE-${Math.floor(100 + Math.random() * 900)}`,
-      serialNumber: this.newAuditSerial,
-      frameNumber: `FRM-${this.newAuditSerial}`,
-      brand: this.newAuditBikeModel.split(' ')[0] || 'Custom',
-      model: this.newAuditBikeModel,
-      bikeType: this.newAuditBikeType,
-      ownerName: this.newAuditOwnerName,
-      ownerPhone: '+1 (555) 000-0000',
-      overallHealthScore: score,
-      raceReadyStatus,
-      lastInspectionDate: new Date().toISOString().slice(0, 10),
-      inspectorName: 'Alex Rivera (Master Tech)',
-      verifiedTorqueSpecs: true,
-      ultrasonicDrivetrainCertified: true,
-      notes: `Health audit completed on ${new Date().toISOString().slice(0, 10)}. Overall Score: ${score}%.`,
-      inspectionItems: [...this.auditItems]
+    const payload: CreateTicketRequest = {
+      customerId: val.customerId,
+      cycleId: val.cycleId,
+      companyName: val.companyName?.trim() ? val.companyName.trim() : null,
+      statusId: val.statusId,
+      priorityId: val.priorityId,
+      assigneeId: val.assigneeId,
+      contactPhone: val.contactPhone,
+      contactEmail: val.contactEmail,
+      description: val.description
     };
 
-    this.catalogService.savePassport(newPassport);
-    this.healthAuditDialogVisible = false;
-    this.activeTab = 'passports';
-
-    this.messageService.add({
-      severity: 'success',
-      summary: 'Digital Passport Issued',
-      detail: `Generated Passport ${newPassport.id} with ${score}% Health Score.`
-    });
-  }
-
-  resetFilters(): void {
-    this.searchQuery = '';
-    this.selectedCategory = null;
-    this.selectedStatus = null;
-  }
-
-  getStatusSeverity(status: TicketStatus): 'success' | 'info' | 'warn' | 'danger' | 'secondary' {
-    switch (status) {
-      case 'Completed': return 'success';
-      case 'In Progress': return 'warn';
-      case 'Assigned': return 'info';
-      case 'Waiting': return 'secondary';
-      case 'Cancelled': return 'danger';
-      default: return 'info';
-    }
-  }
-
-  getPrioritySeverity(priority: TicketPriority): 'success' | 'info' | 'warn' | 'danger' | 'secondary' {
-    switch (priority) {
-      case 'Urgent': return 'danger';
-      case 'High': return 'warn';
-      case 'Medium': return 'info';
-      case 'Low': return 'secondary';
-      default: return 'info';
-    }
-  }
-
-  viewTicket(ticket: ServiceTicket): void {
-    this.selectedTicket = ticket;
-    this.drawerVisible = true;
-  }
-
-  openEditDialog(ticket: ServiceTicket): void {
-    this.editingTicket = { ...ticket };
-    this.editDialogVisible = true;
-  }
-
-  saveEditedTicket(): void {
-    if (this.editingTicket) {
-      const tech = this.technicianOptions.find(t => t.id === this.editingTicket!.assigneeId);
-      if (tech) {
-        this.editingTicket.assigneeName = tech.name;
+    this.ticketService.createTicket(payload).subscribe({
+      next: (res) => {
+        this.isSubmitting = false;
+        this.createDialogVisible = false;
+        this.notificationService.showApiSuccess(
+          'create',
+          'Service ticket',
+          `Ticket #${res.id?.substring(0, 8) || 'NEW'} created successfully.`
+        );
+        this.loadData();
+      },
+      error: (err) => {
+        this.isSubmitting = false;
+        this.notificationService.handleApiError('create service ticket', err);
       }
-      this.dataService.updateTicket(this.editingTicket.id, this.editingTicket);
-      this.editDialogVisible = false;
-      this.messageService.add({
-        severity: 'success',
-        summary: 'Service Updated',
-        detail: `Ticket ${this.editingTicket.id} updated successfully.`
-      });
-    }
-  }
-
-  confirmToggleEnabled(ticket: ServiceTicket): void {
-    const action = ticket.enabled ? 'enable' : 'disable';
-    this.messageService.add({
-      severity: ticket.enabled ? 'info' : 'warn',
-      summary: `Ticket ${ticket.enabled ? 'Enabled' : 'Disabled'}`,
-      detail: `Ticket ${ticket.id} has been ${action}d.`
     });
   }
 
-  confirmDelete(ticket: ServiceTicket): void {
-    this.confirmationService.confirm({
-      message: `Are you sure you want to delete service ticket "${ticket.id}" for ${ticket.customerName}?`,
-      header: 'Confirm Deletion',
-      icon: 'pi pi-exclamation-triangle',
-      acceptButtonStyleClass: 'p-button-danger',
-      accept: () => {
-        this.dataService.deleteTicket(ticket.id);
-        this.messageService.add({
-          severity: 'success',
-          summary: 'Deleted',
-          detail: `Ticket ${ticket.id} deleted.`
+  openEditDialog(ticket: TicketResponseDto): void {
+    this.selectedTicketForEdit = ticket;
+
+    // Fetch fresh lookups from Misc API whenever Edit is clicked
+    this.miscService.loadAllLookups().subscribe({
+      next: (lookups) => {
+        if (lookups.statuses && lookups.statuses.length > 0) {
+          this.statusOptions = lookups.statuses.map(s => ({ label: s.name, value: s.id }));
+        }
+        if (lookups.priorities && lookups.priorities.length > 0) {
+          this.priorityOptions = lookups.priorities.map(p => ({ label: p.name, value: p.id }));
+        }
+        if (lookups.users && lookups.users.length > 0) {
+          this.assigneeOptions = lookups.users.map(u => ({
+            label: `${(u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : u.email)} (${u.email})`,
+            value: u.id
+          }));
+        }
+
+        // Match status by ID or by name
+        const matchedStatus = this.statusOptions.find(
+          s => s.value === ticket.statusId || s.label.toLowerCase() === (ticket.status || '').toLowerCase()
+        );
+        const statusVal = matchedStatus ? matchedStatus.value : (ticket.statusId || (this.statusOptions[0]?.value ?? ''));
+
+        // Match priority by ID or by name
+        const matchedPriority = this.priorityOptions.find(
+          p => p.value === ticket.priorityId || p.label.toLowerCase() === (ticket.priority || '').toLowerCase()
+        );
+        const priorityVal = matchedPriority ? matchedPriority.value : (ticket.priorityId || (this.priorityOptions[0]?.value ?? ''));
+
+        // Match assignee by ID or name
+        const matchedAssignee = this.assigneeOptions.find(
+          a => a.value === ticket.assigneeId || (ticket.assigneeName && a.label.toLowerCase().includes(ticket.assigneeName.toLowerCase()))
+        );
+        const assigneeVal = matchedAssignee ? matchedAssignee.value : (ticket.assigneeId || '');
+
+        this.editForm.patchValue({
+          statusId: statusVal,
+          priorityId: priorityVal,
+          assigneeId: assigneeVal,
+          contactPhone: ticket.contactPhone || '',
+          contactEmail: ticket.contactEmail || '',
+          description: ticket.description || ''
         });
+
+        this.editDialogVisible = true;
+      },
+      error: () => {
+        // Fallback with current options if network fails
+        this.editForm.patchValue({
+          statusId: ticket.statusId,
+          priorityId: ticket.priorityId,
+          assigneeId: ticket.assigneeId,
+          contactPhone: ticket.contactPhone,
+          contactEmail: ticket.contactEmail,
+          description: ticket.description
+        });
+        this.editDialogVisible = true;
       }
     });
+  }
+
+  submitEdit(): void {
+    if (!this.selectedTicketForEdit) return;
+
+    this.isSubmitting = true;
+    const val = this.editForm.value;
+
+    const payload: UpdateTicketRequest = {
+      statusId: val.statusId,
+      priorityId: val.priorityId,
+      assigneeId: val.assigneeId || null,
+      contactPhone: val.contactPhone,
+      contactEmail: val.contactEmail,
+      description: val.description
+    };
+
+    this.ticketService.updateTicket(this.selectedTicketForEdit.id, payload).subscribe({
+      next: () => {
+        this.isSubmitting = false;
+        this.editDialogVisible = false;
+        this.notificationService.showApiSuccess(
+          'update',
+          'Service ticket',
+          'Service ticket updated successfully.'
+        );
+        this.loadData();
+      },
+      error: (err) => {
+        this.isSubmitting = false;
+        this.notificationService.handleApiError('update service ticket', err);
+      }
+    });
+  }
+
+  openViewDialog(ticket: TicketResponseDto): void {
+    this.selectedTicketForView = ticket;
+    this.generateQrCodeForTicket(ticket);
+    this.viewDialogVisible = true;
+  }
+
+  generateQrCodeForTicket(ticket: TicketResponseDto): void {
+    this.viewQrDataUrl = null;
+    this.viewQrUrl = '';
+
+    if (!ticket || !ticket.cycleId) {
+      return;
+    }
+
+    this.isGeneratingQr = true;
+    const baseUrl = this.configService.apiUrl.replace(/\/+$/, '');
+    this.viewQrUrl = `${baseUrl}/api/cycles/${ticket.cycleId}/service-info`;
+
+    QRCode.toDataURL(this.viewQrUrl, {
+      width: 300,
+      margin: 2,
+      errorCorrectionLevel: 'M',
+      color: {
+        dark: '#000000',
+        light: '#ffffff'
+      }
+    })
+      .then((url) => {
+        this.viewQrDataUrl = url;
+        this.isGeneratingQr = false;
+      })
+      .catch((err) => {
+        console.error('Failed to generate QR code:', err);
+        this.viewQrDataUrl = null;
+        this.isGeneratingQr = false;
+      });
+  }
+
+  printQrCode(): void {
+    if (!this.viewQrDataUrl || !this.selectedTicketForView?.cycleId) {
+      this.notificationService.showWarning('QR Unavailable', 'No valid QR code available to print.');
+      return;
+    }
+
+    const cycleId = this.selectedTicketForView.cycleId;
+    const cycleModel = this.selectedTicketForView.cycleModel || 'Cycle';
+    const qrUrl = this.viewQrUrl;
+    const qrDataUrl = this.viewQrDataUrl;
+
+    const printWindow = window.open('', '_blank', 'width=450,height=550');
+    if (!printWindow) {
+      this.notificationService.showWarning('Popup Blocked', 'Please allow popups for printing the QR code.');
+      return;
+    }
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Cycle Service QR - ${cycleId}</title>
+          <style>
+            @page {
+              size: auto;
+              margin: 8mm;
+            }
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+              text-align: center;
+              margin: 0;
+              padding: 20px;
+              color: #111827;
+              background: #ffffff;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            .qr-card {
+              display: inline-block;
+              border: 1px solid #e5e7eb;
+              border-radius: 12px;
+              padding: 16px;
+              max-width: 320px;
+              box-sizing: border-box;
+              background: #ffffff;
+            }
+            .brand-title {
+              font-size: 13px;
+              font-weight: 800;
+              text-transform: uppercase;
+              letter-spacing: 1px;
+              color: #ea580c;
+              margin-bottom: 2px;
+            }
+            .brand-subtitle {
+              font-size: 11px;
+              font-weight: 600;
+              color: #374151;
+              margin-bottom: 12px;
+            }
+            .qr-code-container {
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              margin: 0 auto 10px auto;
+            }
+            .qr-code-print {
+              width: 3cm !important;
+              height: 3cm !important;
+              min-width: 3cm;
+              min-height: 3cm;
+              max-width: 3cm;
+              max-height: 3cm;
+              display: block;
+              margin: 0 auto;
+            }
+            .cycle-info {
+              font-size: 11px;
+              font-weight: 700;
+              color: #111827;
+              margin-bottom: 2px;
+            }
+            .cycle-id {
+              font-size: 10px;
+              font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+              color: #4b5563;
+              margin-bottom: 8px;
+            }
+            .scan-instruction {
+              font-size: 10px;
+              color: #4b5563;
+              margin-bottom: 6px;
+              font-weight: 500;
+            }
+            .qr-url {
+              font-size: 8.5px;
+              font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+              color: #4b5563;
+              word-break: break-all;
+              background: #f9fafb;
+              padding: 4px 6px;
+              border-radius: 4px;
+              border: 1px solid #e5e7eb;
+            }
+            @media print {
+              body {
+                padding: 0;
+              }
+              .qr-card {
+                border: 1px solid #d1d5db;
+              }
+              .qr-code-print {
+                width: 5cm !important;
+                height:5cm !important;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="qr-card">
+            <div class="brand-title">FREEWHEEL SERVICE CENTER</div>
+            <div class="qr-code-container">
+              <img src="${qrDataUrl}" alt="QR Code" class="qr-code-print" />
+            </div>
+            <div class="cycle-info">${cycleModel}</div>
+          </div>
+          <script>
+            window.onload = function() {
+              window.focus();
+              window.print();
+              window.close();
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  }
+
+  getStatusSeverity(status?: string | null): 'success' | 'info' | 'warn' | 'danger' | 'secondary' {
+    if (!status) return 'info';
+    const s = status.toLowerCase();
+    if (s.includes('completed') || s.includes('done')) return 'success';
+    if (s.includes('progress')) return 'warn';
+    if (s.includes('assigned')) return 'info';
+    if (s.includes('cancel')) return 'danger';
+    if (s.includes('new') || s.includes('waiting')) return 'info';
+    return 'secondary';
+  }
+
+  getPrioritySeverity(priority?: string | null): 'success' | 'info' | 'warn' | 'danger' | 'secondary' {
+    if (!priority) return 'secondary';
+    const p = priority.toLowerCase();
+    if (p.includes('urgent')) return 'danger';
+    if (p.includes('high')) return 'warn';
+    if (p.includes('medium')) return 'info';
+    if (p.includes('low')) return 'secondary';
+    return 'secondary';
   }
 }

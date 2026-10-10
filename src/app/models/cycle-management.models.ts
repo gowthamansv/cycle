@@ -1,6 +1,6 @@
 export type BicycleType = 'Road' | 'Mountain' | 'Hybrid' | 'BMX' | 'Electric' | 'Gravel' | 'Other';
 
-export type TicketStatus = 'Waiting' | 'Assigned' | 'In Progress' | 'Completed' | 'Cancelled';
+export type TicketStatus = 'New' | 'Assigned' | 'In Progress' | 'Completed' | 'Cancelled';
 export type TicketPriority = 'Low' | 'Medium' | 'High' | 'Urgent';
 
 export type AppointmentStatus = 'Scheduled' | 'Confirmed' | 'In Service' | 'Completed' | 'Cancelled' | 'No Show';
@@ -8,7 +8,7 @@ export type AppointmentStatus = 'Scheduled' | 'Confirmed' | 'In Service' | 'Comp
 export type TechnicianAvailability = 'Available' | 'On Job' | 'On Break' | 'Off Duty';
 
 // FREEWHEEL FACTORY - Service System Taxonomy
-export type ServiceDepartment = 
+export type ServiceDepartment =
   | 'Bike Service'
   | 'Performance & Race'
   | 'Bike Fit & Ergonomics'

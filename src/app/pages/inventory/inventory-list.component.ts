@@ -6,9 +6,8 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { TagModule } from 'primeng/tag';
-import { ToastModule } from 'primeng/toast';
 import { TooltipModule } from 'primeng/tooltip';
-import { MessageService } from 'primeng/api';
+import { AppNotificationService } from '../../common/services/notification.service';
 import { CycleDataService } from '../../services/cycle-data.service';
 import { InventoryItem } from '../../models/cycle-management.models';
 
@@ -23,13 +22,9 @@ import { InventoryItem } from '../../models/cycle-management.models';
     InputTextModule,
     SelectModule,
     TagModule,
-    ToastModule,
     TooltipModule
   ],
-  providers: [MessageService],
   template: `
-    <p-toast></p-toast>
-
     <div class="flex flex-col gap-6">
       <!-- Header -->
       <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-surface-0 dark:bg-surface-900 p-6 rounded-xl border border-surface-200 dark:border-surface-700 shadow-sm">
@@ -100,7 +95,7 @@ import { InventoryItem } from '../../models/cycle-management.models';
 })
 export class InventoryListComponent implements OnInit {
   protected dataService = inject(CycleDataService);
-  private messageService = inject(MessageService);
+  private notificationService = inject(AppNotificationService);
 
   ngOnInit(): void {}
 
@@ -111,10 +106,6 @@ export class InventoryListComponent implements OnInit {
   restock(item: InventoryItem): void {
     item.stock += 10;
     item.status = 'In Stock';
-    this.messageService.add({
-      severity: 'success',
-      summary: 'Restocked',
-      detail: `Added 10 units to ${item.name}.`
-    });
+    this.notificationService.showApiSuccess('UPDATE', 'Inventory', `Added 10 units to ${item.name}.`);
   }
 }
