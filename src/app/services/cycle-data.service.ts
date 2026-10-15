@@ -548,7 +548,9 @@ export class CycleDataService {
       nextServiceDate: '2027-03-20',
       color: 'Matte Deep Smoke',
       gearSystem: 'Shimano 105 Di2 12-Speed',
-      brakeType: 'Hydraulic Disc',
+      brakeType: 'Hydraulic Disc (160mm Rotor)',
+      wheelSize: '700c (Bontrager Paradigm Comp 25)',
+      tyreSize: '700x32c Tubeless Ready',
       notes: 'Carbon frame inspected; all clear. Rear tire replaced last month.'
     },
     {
@@ -566,8 +568,10 @@ export class CycleDataService {
       lastServiceDate: '2026-09-17',
       nextServiceDate: '2027-03-17',
       color: 'Curry Powder / Black',
-      gearSystem: 'Shimano GRX RX810',
-      brakeType: 'Hydraulic Disc',
+      gearSystem: 'Shimano GRX RX810 1x11',
+      brakeType: 'Shimano GRX Hydraulic Disc',
+      wheelSize: '700c (DT Swiss G1800 Spline)',
+      tyreSize: '700x45c Schwalbe G-One Bite',
       notes: 'New bar tape installed, sealant refreshed.'
     },
     {
@@ -585,8 +589,10 @@ export class CycleDataService {
       lastServiceDate: '2026-09-20',
       nextServiceDate: '2026-12-20',
       color: 'Gloss Oasis / Metallic White',
-      gearSystem: 'SRAM GX Eagle AXS',
-      brakeType: 'SRAM Code RS 4-Piston',
+      gearSystem: 'SRAM GX Eagle AXS 12-Speed',
+      brakeType: 'SRAM Code RS 4-Piston Hydraulic (200mm Front / 180mm Rear)',
+      wheelSize: '29" (Roval Traverse Alloy)',
+      tyreSize: '29" x 2.4" Butcher T9 (Front) / Eliminator T7 (Rear)',
       notes: 'Heavy trail usage, requires suspension service every 50 riding hours.'
     },
     {
@@ -605,7 +611,9 @@ export class CycleDataService {
       nextServiceDate: '2027-03-20',
       color: 'Beetle Green',
       gearSystem: 'Shimano GRX 800 2x11',
-      brakeType: 'Hydraulic Disc',
+      brakeType: 'Shimano GRX Hydraulic Disc',
+      wheelSize: '700c (WTB KOM Light i23 TCS)',
+      tyreSize: '700x40c WTB Riddler TCS Light',
       notes: 'Kingpin suspension pivot inspected and torqued to 8Nm.'
     },
     {
@@ -623,8 +631,10 @@ export class CycleDataService {
       lastServiceDate: '2026-09-19',
       nextServiceDate: '2027-03-19',
       color: 'Metallic Black / Amber Flame',
-      gearSystem: 'Shimano Ultegra Di2',
-      brakeType: 'Shimano Ultegra Hydraulic',
+      gearSystem: 'Shimano Ultegra Di2 12-Speed',
+      brakeType: 'Shimano Ultegra Hydraulic Disc (160/140mm)',
+      wheelSize: '700c (Giant SLR 1 36 Carbon Disc)',
+      tyreSize: '700x32c Giant Gavia Fondo 0 Tubeless',
       notes: 'Full annual service completed. New chain fitted.'
     },
     {
@@ -643,7 +653,9 @@ export class CycleDataService {
       nextServiceDate: '2027-01-20',
       color: 'Cast Black / Silver Reflective',
       gearSystem: 'SRAM NX 11-Speed',
-      brakeType: 'Master Cylinder Disc Hydraulic',
+      brakeType: 'Shimano MT200 Hydraulic Disc (180/180mm)',
+      wheelSize: '650b (27.5" Alloy Double-Wall)',
+      tyreSize: '650bx2.3" Pathfinder Sport Reflective',
       notes: 'Specialized 2.0 Motor - Firmware v8.4.1 installed.'
     },
     {
@@ -661,8 +673,10 @@ export class CycleDataService {
       lastServiceDate: '2026-09-20',
       nextServiceDate: '2027-02-20',
       color: 'Matte Nickel / Gloss Carbon',
-      gearSystem: 'SRAM X01 Eagle Mechanical',
-      brakeType: 'SRAM Code RSC',
+      gearSystem: 'SRAM X01 Eagle Mechanical 12-Speed',
+      brakeType: 'SRAM Code RSC 4-Piston (200mm Rotors)',
+      wheelSize: '29" (RaceFace AR Offset 30)',
+      tyreSize: '29" x 2.5" Maxxis Assegai EXO+ 3C MaxxGrip',
       notes: 'Dropper post requires bleed.'
     }
   ]);
@@ -921,7 +935,17 @@ export class CycleDataService {
       sopList: dto.sopList,
       createdAt: '2026-09-20 11:45',
       updatedAt: '2026-09-20 11:45',
-      enabled: dto.enabled ?? true
+      enabled: dto.enabled ?? true,
+      udF1: dto.udF1,
+      udF2: dto.udF2,
+      udF3: dto.udF3,
+      udF4: dto.udF4,
+      udF5: dto.udF5,
+      udF6: dto.udF6,
+      udF7: dto.udF7,
+      udF8: dto.udF8,
+      udF9: dto.udF9,
+      udF10: dto.udF10
     };
 
     this.ticketsSignal.update(list => [newTicket, ...list]);

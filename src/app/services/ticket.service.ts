@@ -87,7 +87,17 @@ export class TicketService {
                   contactPhone: updated.contactPhone,
                   contactEmail: updated.contactEmail,
                   description: updated.description,
-                  updatedAt: updated.updatedAt
+                  updatedAt: updated.updatedAt,
+                  udF1: updated.udF1,
+                  udF2: updated.udF2,
+                  udF3: updated.udF3,
+                  udF4: updated.udF4,
+                  udF5: updated.udF5,
+                  udF6: updated.udF6,
+                  udF7: updated.udF7,
+                  udF8: updated.udF8,
+                  udF9: updated.udF9,
+                  udF10: updated.udF10
                 }
               : t
           )

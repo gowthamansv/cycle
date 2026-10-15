@@ -73,45 +73,48 @@ export const routes: Routes = [
   {
     path: '',
     component: AppLayout,
-
+    canActivate: [authGuard],
     children: [
       // Primary Operational Dashboard (Admin Only)
-      { path: '', component: ServiceDashboardComponent, title: 'Dashboard | Cycle Service Center' },
-      { path: 'admin', component: ServiceDashboardComponent, title: 'Admin Workspace | Cycle Service Center' },
-      { path: 'dashboard', component: ServiceDashboardComponent, title: 'Dashboard | Cycle Service Center' },
+      { path: '', component: ServiceDashboardComponent, canActivate: [adminGuard], title: 'Dashboard | Cycle Service Center' },
+      { path: 'admin', component: ServiceDashboardComponent, canActivate: [adminGuard], title: 'Admin Workspace | Cycle Service Center' },
+      { path: 'dashboard', component: ServiceDashboardComponent, canActivate: [adminGuard], title: 'Dashboard | Cycle Service Center' },
 
       // Services (Accessible to both Admin and User)
       { path: 'services', component: ServicesListComponent, title: 'Services | Cycle Service Center' },
-      { path: 'services/new', component: ServiceFormComponent, title: 'Create Service | Cycle Service Center' },
+      { path: 'services/new', component: ServiceFormComponent, title: 'Create Service Ticket | Cycle Service Center' },
+      { path: 'services/create', component: ServiceFormComponent, title: 'Create Service Ticket | Cycle Service Center' },
+      { path: 'services/:id/edit', component: ServiceFormComponent, title: 'Edit Service Ticket | Cycle Service Center' },
+      { path: 'services/edit/:id', component: ServiceFormComponent, title: 'Edit Service Ticket | Cycle Service Center' },
 
       // Appointments (Admin Only)
-      // { path: 'appointments', component: AppointmentsListComponent,  title: 'Appointments | Cycle Service Center' },
-      // { path: 'appointments/new', component: AppointmentFormComponent,  title: 'New Appointment | Cycle Service Center' },
+      // { path: 'appointments', component: AppointmentsListComponent, canActivate: [adminGuard], title: 'Appointments | Cycle Service Center' },
+      // { path: 'appointments/new', component: AppointmentFormComponent, canActivate: [adminGuard], title: 'New Appointment | Cycle Service Center' },
 
       // Service Jobs (Redirected to unified Services Management)
       // { path: 'service-jobs', redirectTo: 'services', pathMatch: 'full' },
 
       // Customers (Accessible to both - User sees direct create interface)
       { path: 'customers', component: CustomersListComponent, title: 'Customers | Cycle Service Center' },
-      { path: 'customers/:id', component: CustomerDetailComponent, title: 'Customer Profile | Cycle Service Center' },
+      { path: 'customers/:id', component: CustomerDetailComponent, canActivate: [adminGuard], title: 'Customer Profile | Cycle Service Center' },
 
       // Bicycles (Accessible to both - User sees direct create interface)
       { path: 'bicycles', component: BicyclesListComponent, title: 'Bicycle Fleet | Cycle Service Center' },
-      { path: 'bicycles/:id', component: BicycleDetailComponent, title: 'Bicycle Profile | Cycle Service Center' },
+      { path: 'bicycles/:id', component: BicycleDetailComponent, canActivate: [adminGuard], title: 'Bicycle Profile | Cycle Service Center' },
 
       // Technicians (Admin Only)
-      { path: 'technicians', component: TechniciansListComponent, title: 'Technicians | Cycle Service Center' },
-      { path: 'technicians/:id', component: TechnicianDetailComponent, title: 'Technician Profile | Cycle Service Center' },
+      { path: 'technicians', component: TechniciansListComponent, canActivate: [adminGuard], title: 'Technicians | Cycle Service Center' },
+      { path: 'technicians/:id', component: TechnicianDetailComponent, canActivate: [adminGuard], title: 'Technician Profile | Cycle Service Center' },
 
       // Settings (Role-aware for both Admin and User)
       // { path: 'settings', component: WorkshopSettingsComponent, title: 'Settings | Cycle Service Center' },
 
       // Template & UIKit Demo Pages (Admin Only)
-      { path: 'documentation', component: Documentation, },
-      { path: 'crud', component: Crud, },
-      { path: 'empty', component: Empty, },
-      { path: 'pages/crud', component: Crud, },
-      { path: 'pages/empty', component: Empty, },
+      { path: 'documentation', component: Documentation, canActivate: [adminGuard] },
+      { path: 'crud', component: Crud, canActivate: [adminGuard] },
+      { path: 'empty', component: Empty, canActivate: [adminGuard] },
+      { path: 'pages/crud', component: Crud, canActivate: [adminGuard] },
+      { path: 'pages/empty', component: Empty, canActivate: [adminGuard] },
       { path: 'pages/notfound', component: NotFoundComponent },
     ],
   },

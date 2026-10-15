@@ -9,7 +9,8 @@ import {
   MiscStatus,
   MiscPriority,
   MiscGroup,
-  MiscCustomer
+  MiscCustomer,
+  CustomerCycleLookup
 } from '../models/api.models';
 
 export interface MiscLookups {
@@ -124,6 +125,17 @@ export class MiscService {
       }),
       shareReplay(1)
     );
+  }
+
+  /**
+   * GET /api/misc/customers/{customerId}/cycles
+   * Fetches the registered bicycles specifically associated with the selected customer.
+   */
+  getCustomerCycles(customerId: string): Observable<CustomerCycleLookup[]> {
+    if (!customerId || !customerId.trim()) {
+      return of([]);
+    }
+    return this.http.get<CustomerCycleLookup[]>(`${this.baseUrl}api/misc/customers/${customerId.trim()}/cycles`);
   }
 
   /**

@@ -124,6 +124,17 @@ export interface ServiceTicket {
   createdAt: string;
   updatedAt: string;
   enabled?: boolean;
+  // UDF 1-10
+  udF1?: string | null;
+  udF2?: string | null;
+  udF3?: string | null;
+  udF4?: string | null;
+  udF5?: string | null;
+  udF6?: string | null;
+  udF7?: string | null;
+  udF8?: string | null;
+  udF9?: string | null;
+  udF10?: string | null;
 }
 
 export interface CreateServiceTicketDto {
@@ -143,6 +154,16 @@ export interface CreateServiceTicketDto {
   estimatedMinutes?: number;
   sopList?: SOPCheckItem[];
   enabled?: boolean;
+  udF1?: string | null;
+  udF2?: string | null;
+  udF3?: string | null;
+  udF4?: string | null;
+  udF5?: string | null;
+  udF6?: string | null;
+  udF7?: string | null;
+  udF8?: string | null;
+  udF9?: string | null;
+  udF10?: string | null;
 }
 
 export interface Appointment {
@@ -208,6 +229,8 @@ export interface CustomerBicycleSummary {
   serialNumber: string;
   lastService: string;
   healthScore?: number;
+  wheelSize?: string;
+  tyreSize?: string;
 }
 
 export interface Customer {
@@ -247,6 +270,8 @@ export interface Bicycle {
   color?: string;
   gearSystem?: string;
   brakeType?: string;
+  wheelSize?: string;
+  tyreSize?: string;
   passportId?: string;
 }
 

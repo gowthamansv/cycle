@@ -3,8 +3,9 @@ import { inject, Injectable, signal, computed, PLATFORM_ID } from '@angular/core
 import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { AppConfigService } from '../../app.config.service';
-import { Observable, of, throwError } from 'rxjs';
+import { Observable, of } from 'rxjs';
 import { catchError, map, tap } from 'rxjs/operators';
+import { AppNotificationService } from './notification.service';
 
 export type UserRole = 'admin' | 'user' | 'staff' | 'customer';
 
@@ -29,6 +30,10 @@ export class AuthService {
   private http = inject(HttpClient);
   private configService = inject(AppConfigService);
   private platformId = inject(PLATFORM_ID);
+  private notificationService = inject(AppNotificationService);
+
+  // Concurrency guard to prevent duplicate 401 session expiration handling
+  private isHandlingSessionExpiration = false;
 
   facility = signal<string | null>(this.getStorageItem('Facility'));
   TraderKey = signal<string | null>(this.getStorageItem('TraderKey'));
@@ -73,7 +78,6 @@ export class AuthService {
     if (authBaseUrl) {
       return this.http.post<any>(authBaseUrl + `api/auth/login`, payload).pipe(
         map((response) => {
-          console.log(response)
           const token = response.accessToken || response.token || 'auth_jwt_token';
           const rawRole = (response.role || response.user?.role || response.Role || response.userType || 'admin').toLowerCase();
           const role: UserRole = rawRole === 'admin' ? 'admin' : 'user';
@@ -85,19 +89,22 @@ export class AuthService {
             facility: response.facility || 'Main Service Hub #01',
           };
 
-          console.log("user", user, token)
           return { token, user };
         }),
         tap(({ token, user }) => this.handleAuthSuccess(token, user, remember)),
         catchError(() => {
           // Fallback to local credential validation if API is unavailable/offline
-          return this.authenticateLocal(trimmedInput, password, remember);
+          return this.authenticateLocal(trimmedInput, password, remember).pipe(
+            tap(({ token, user }) => this.handleAuthSuccess(token, user, remember))
+          );
         })
       );
     }
 
     // Direct local authentication fallback
-    return this.authenticateLocal(trimmedInput, password, remember);
+    return this.authenticateLocal(trimmedInput, password, remember).pipe(
+      tap(({ token, user }) => this.handleAuthSuccess(token, user, remember))
+    );
   }
 
   /**
@@ -127,7 +134,6 @@ export class AuthService {
           name: isAdminUser ? 'Cycle Center Administrator' : 'Service Staff User',
           facility: 'Main Service Hub #01',
         };
-        // this.handleAuthSuccess(token, user, remember);
         return { token, user };
       }),
       catchError(() => {
@@ -139,16 +145,21 @@ export class AuthService {
           name: isAdminUser ? 'Cycle Center Administrator' : 'Service Staff User',
           facility: 'Main Service Hub #01',
         };
-        // this.handleAuthSuccess(token, user, remember);
         return of({ token, user });
       })
     );
   }
 
   private handleAuthSuccess(token: string, user: AuthUser, remember: boolean): void {
+    // Reset session expiration lock on successful authentication
+    this.isHandlingSessionExpiration = false;
+
     this.token.set(token);
     this.userRole.set(user.role);
     this.currentUser.set(user);
+    if (user.facility) {
+      this.facility.set(user.facility);
+    }
 
     if (isPlatformBrowser(this.platformId)) {
       sessionStorage.setItem('Token', token);
@@ -164,30 +175,79 @@ export class AuthService {
         localStorage.setItem('token', token);
         localStorage.setItem('user_role', user.role);
         localStorage.setItem('admin_user', JSON.stringify(user));
+        if (user.facility) {
+          localStorage.setItem('Facility', user.facility);
+        }
       }
     }
   }
 
-  logout(): void {
+  /**
+   * Centralized handler for HTTP 401 Unauthorized responses.
+   * Cleans authentication state, avoids duplicate triggers, notifies the user once, and redirects to login.
+   */
+  handleSessionExpired(returnUrl?: string): void {
+    if (this.isHandlingSessionExpiration) {
+      return;
+    }
+    this.isHandlingSessionExpiration = true;
+
+    // Clear all in-memory and stored authentication data
+    this.clearAuthState();
+
+    // Notify user once with clear session expiration messaging
+    this.notificationService.showError('Session Expired', 'Your session has expired. Please sign in again.');
+
+    // Redirect safely avoiding redirect loops
+    const currentUrl = returnUrl || this.router.url || '';
+    const isAlreadyOnLogin =
+      currentUrl.includes('/admin/login') ||
+      currentUrl.includes('/login') ||
+      currentUrl.includes('/auth/login');
+
+    if (!isAlreadyOnLogin) {
+      const isPublicRoute = currentUrl.includes('/landing') || currentUrl.includes('/notfound');
+      const queryParams = !isPublicRoute && currentUrl && currentUrl !== '/' ? { returnUrl: currentUrl } : undefined;
+      this.router.navigate(['/admin/login'], { queryParams });
+    }
+  }
+
+  /**
+   * Manual user logout action
+   */
+  logout(redirectUrl: string = '/admin/login'): void {
+    this.isHandlingSessionExpiration = false;
+    this.clearAuthState();
+    this.router.navigate([redirectUrl]);
+  }
+
+  /**
+   * Clears in-memory signals and persistent authentication session data
+   */
+  private clearAuthState(): void {
     this.token.set(null);
     this.userRole.set(null);
     this.currentUser.set(null);
+    this.facility.set(null);
+    this.TraderKey.set(null);
+    this.tokenAp.set(null);
 
-    if (isPlatformBrowser(this.platformId)) {
-      sessionStorage.removeItem('Token');
-      sessionStorage.removeItem('token');
-      sessionStorage.removeItem('user_role');
-      sessionStorage.removeItem('admin_user');
-      sessionStorage.removeItem('Facility');
-      sessionStorage.removeItem('TraderKey');
+    this.clearAuthStorage();
+  }
 
-      localStorage.removeItem('Token');
-      localStorage.removeItem('token');
-      localStorage.removeItem('user_role');
-      localStorage.removeItem('admin_user');
+  /**
+   * Clears authentication-related keys from sessionStorage and localStorage
+   */
+  private clearAuthStorage(): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
     }
 
-    this.router.navigate(['/admin/login']);
+    const authKeys = ['Token', 'token', 'user_role', 'admin_user', 'Facility', 'TraderKey', 'TokenAp'];
+    for (const key of authKeys) {
+      sessionStorage.removeItem(key);
+      localStorage.removeItem(key);
+    }
   }
 
   getAuthHeaders(): HttpHeaders {

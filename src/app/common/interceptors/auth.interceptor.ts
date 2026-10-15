@@ -3,13 +3,9 @@ import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, throwError } from 'rxjs';
 import { AuthService } from '../services/auth.service';
-import { AppConfigService } from '../../app.config.service';
-import { AppNotificationService } from '../services/notification.service';
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);
-  const configService = inject(AppConfigService);
-  const notificationService = inject(AppNotificationService);
   const router = inject(Router);
 
   // Determine active token
@@ -33,9 +29,23 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   return next(clonedReq).pipe(
     catchError((error: HttpErrorResponse) => {
       if (error.status === 401) {
-        // If 401 Unauthorized is received on an authenticated call
-        if (!req.url.includes('/auth/login') && !router.url.includes('/admin/login')) {
-          notificationService.showError('Session Expired', 'Your session has expired. Please sign in again.');
+        // Detect 401 Unauthorized
+        // Identify auth endpoints and login page routes to avoid intercepting legitimate login failures
+        const isAuthEndpoint =
+          req.url.includes('/auth/login') ||
+          req.url.includes('/api/auth/login') ||
+          req.url.includes('api/test/jwt');
+
+        const currentRoute = router.url || '';
+        const isLoginRoute =
+          currentRoute.includes('/admin/login') ||
+          currentRoute.includes('/login') ||
+          currentRoute.includes('/auth/login');
+
+        // Only trigger session expiration if this is an authenticated call (or user was logged in)
+        // and is not a login attempt
+        if (!isAuthEndpoint && !isLoginRoute && (authService.isAuthenticated() || !!token)) {
+          authService.handleSessionExpired();
         }
       }
       return throwError(() => error);

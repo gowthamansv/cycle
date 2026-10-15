@@ -102,6 +102,11 @@ export class AppNotificationService {
    * Contextual helper to parse and present clean API errors without exposing database traces or stack errors
    */
   handleApiError(operation: string, error: any, customFallback?: string): void {
+    // 401 Unauthorized is handled centrally by the session expiration handler
+    if (error?.status === 401) {
+      return;
+    }
+
     const formattedOp = this.formatOperationName(operation);
     const summary = `Unable to ${formattedOp}`;
     const userMessage = this.extractFriendlyErrorMessage(error, customFallback);

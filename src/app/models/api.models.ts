@@ -62,6 +62,49 @@ export interface TicketResponseDto {
   description?: string | null;
   createdAt: string; // ISO date-time
   updatedAt?: string | null; // ISO date-time
+  // UDF 1-10 (User Defined Fields for Bicycle Service Details)
+  udF1?: string | null; // Bicycle Condition at Intake (Good, Fair, Poor, Severely Damaged)
+  udF2?: string | null; // Visible Damage / Existing Defects
+  udF3?: string | null; // Approximate Distance Used (e.g. 1500 km)
+  udF4?: string | null; // Accessories Received (e.g. Pedals, Lights, Bottle Cage)
+  udF5?: string | null; // Intake Photos / Attachment Data
+  udF6?: string | null; // Requested Service(s) from Catalogue
+  udF7?: string | null; // Parts / Components Requiring Attention
+  udF8?: string | null; // Mechanic Inspection Findings
+  udF9?: string | null; // Repair / Work Performed
+  udF10?: string | null; // Parts Replaced & Work Approval
+  udf1?: string | null;
+  udf2?: string | null;
+  udf3?: string | null;
+  udf4?: string | null;
+  udf5?: string | null;
+  udf6?: string | null;
+  udf7?: string | null;
+  udf8?: string | null;
+  udf9?: string | null;
+  udf10?: string | null;
+}
+
+export interface CustomerCycleLookup {
+  id?: string;
+  cycleId?: string;
+  customerId?: string;
+  brand?: string;
+  model?: string;
+  cycleModel?: string;
+  serialNumber?: string | null;
+  frameNumber?: string | null;
+  bicycleType?: string | null;
+  type?: string | null;
+  brakeSystem?: string | null;
+  brakeType?: string | null;
+  drivetrain?: string | null;
+  gearSystem?: string | null;
+  wheelSize?: string | null;
+  tyreSize?: string | null;
+  color?: string | null;
+  status?: string | null;
+  createdAt?: string | null;
 }
 
 export interface CreateTicketRequest {
@@ -74,6 +117,27 @@ export interface CreateTicketRequest {
   contactPhone: string; // required
   contactEmail?: string | null;
   description?: string | null;
+  // UDF 1-10
+  udF1?: string | null;
+  udF2?: string | null;
+  udF3?: string | null;
+  udF4?: string | null;
+  udF5?: string | null;
+  udF6?: string | null;
+  udF7?: string | null;
+  udF8?: string | null;
+  udF9?: string | null;
+  udF10?: string | null;
+  udf1?: string | null;
+  udf2?: string | null;
+  udf3?: string | null;
+  udf4?: string | null;
+  udf5?: string | null;
+  udf6?: string | null;
+  udf7?: string | null;
+  udf8?: string | null;
+  udf9?: string | null;
+  udf10?: string | null;
 }
 
 export interface CreateTicketResponse {
@@ -88,6 +152,26 @@ export interface CreateTicketResponse {
   contactEmail?: string | null;
   description?: string | null;
   createdAt: string;
+  udF1?: string | null;
+  udF2?: string | null;
+  udF3?: string | null;
+  udF4?: string | null;
+  udF5?: string | null;
+  udF6?: string | null;
+  udF7?: string | null;
+  udF8?: string | null;
+  udF9?: string | null;
+  udF10?: string | null;
+  udf1?: string | null;
+  udf2?: string | null;
+  udf3?: string | null;
+  udf4?: string | null;
+  udf5?: string | null;
+  udf6?: string | null;
+  udf7?: string | null;
+  udf8?: string | null;
+  udf9?: string | null;
+  udf10?: string | null;
 }
 
 export interface UpdateTicketRequest {
@@ -97,6 +181,26 @@ export interface UpdateTicketRequest {
   contactPhone?: string | null;
   contactEmail?: string | null;
   description?: string | null;
+  udF1?: string | null;
+  udF2?: string | null;
+  udF3?: string | null;
+  udF4?: string | null;
+  udF5?: string | null;
+  udF6?: string | null;
+  udF7?: string | null;
+  udF8?: string | null;
+  udF9?: string | null;
+  udF10?: string | null;
+  udf1?: string | null;
+  udf2?: string | null;
+  udf3?: string | null;
+  udf4?: string | null;
+  udf5?: string | null;
+  udf6?: string | null;
+  udf7?: string | null;
+  udf8?: string | null;
+  udf9?: string | null;
+  udf10?: string | null;
 }
 
 export interface UpdateTicketResponse {
@@ -113,6 +217,16 @@ export interface UpdateTicketResponse {
   createdAt: string;
   updatedAt: string;
   updatedBy: string;
+  udF1?: string | null;
+  udF2?: string | null;
+  udF3?: string | null;
+  udF4?: string | null;
+  udF5?: string | null;
+  udF6?: string | null;
+  udF7?: string | null;
+  udF8?: string | null;
+  udF9?: string | null;
+  udF10?: string | null;
 }
 
 export interface AssignedTicketResponseDto {
@@ -132,6 +246,16 @@ export interface AssignedTicketResponseDto {
   description?: string | null;
   createdAt: string;
   updatedAt?: string | null;
+  udF1?: string | null;
+  udF2?: string | null;
+  udF3?: string | null;
+  udF4?: string | null;
+  udF5?: string | null;
+  udF6?: string | null;
+  udF7?: string | null;
+  udF8?: string | null;
+  udF9?: string | null;
+  udF10?: string | null;
 }
 
 // ==========================================
