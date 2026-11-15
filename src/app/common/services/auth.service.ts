@@ -3,7 +3,7 @@ import { inject, Injectable, signal, computed, PLATFORM_ID } from '@angular/core
 import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { AppConfigService } from '../../app.config.service';
-import { Observable, of } from 'rxjs';
+import { Observable, of, throwError } from 'rxjs';
 import { catchError, map, tap } from 'rxjs/operators';
 import { AppNotificationService } from './notification.service';
 
@@ -123,31 +123,29 @@ export class AuthService {
       (lowerInput === 'user' || lowerInput === 'user@cycleservice.com' || lowerInput === 'staff' || lowerInput.includes('user') || lowerInput.includes('staff') || !lowerInput.includes('admin')) &&
       password.length >= 4;
 
-    const baseUrl = this.configService.apiUrl;
-    return this.http.get<{ token: string }>(`${baseUrl}api/test/jwt`).pipe(
-      map((res) => {
-        const token = res.token;
-        const user: AuthUser = {
-          username: usernameOrEmail,
-          email: usernameOrEmail.includes('@') ? usernameOrEmail : `${usernameOrEmail}@cycleservice.com`,
-          role: isAdminUser ? 'admin' : 'user',
-          name: isAdminUser ? 'Cycle Center Administrator' : 'Service Staff User',
-          facility: 'Main Service Hub #01',
-        };
-        return { token, user };
-      }),
-      catchError(() => {
-        const token = isAdminUser ? `csc_jwt_token_${Date.now()}_admin` : `csc_jwt_token_${Date.now()}_user`;
-        const user: AuthUser = {
-          username: usernameOrEmail,
-          email: usernameOrEmail.includes('@') ? usernameOrEmail : `${usernameOrEmail}@cycleservice.com`,
-          role: isAdminUser ? 'admin' : 'user',
-          name: isAdminUser ? 'Cycle Center Administrator' : 'Service Staff User',
-          facility: 'Main Service Hub #01',
-        };
-        return of({ token, user });
-      })
-    );
+    if (isAdminUser) {
+      const token = `csc_jwt_token_${Date.now()}_admin`;
+      const user: AuthUser = {
+        username: usernameOrEmail,
+        email: usernameOrEmail.includes('@') ? usernameOrEmail : `${usernameOrEmail}@cycleservice.com`,
+        role: 'admin',
+        name: 'Cycle Center Administrator',
+        facility: 'Main Service Hub #01',
+      };
+      return of({ token, user });
+    } else if (isStandardUser) {
+      const token = `csc_jwt_token_${Date.now()}_user`;
+      const user: AuthUser = {
+        username: usernameOrEmail,
+        email: usernameOrEmail.includes('@') ? usernameOrEmail : `${usernameOrEmail}@cycleservice.com`,
+        role: 'user',
+        name: 'Service Staff User',
+        facility: 'Main Service Hub #01',
+      };
+      return of({ token, user });
+    } else {
+      return throwError(() => new Error('INVALID_CREDENTIALS'));
+    }
   }
 
   private handleAuthSuccess(token: string, user: AuthUser, remember: boolean): void {

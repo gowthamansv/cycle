@@ -332,17 +332,10 @@ export class AppointmentsListComponent implements OnInit {
     { label: 'No Show', value: 'No Show' }
   ];
 
-  technicianOptions = [
-    { label: 'Alex Rivera', value: 'Alex Rivera' },
-    { label: 'David Chen', value: 'David Chen' },
-    { label: 'Sara Jenkins', value: 'Sara Jenkins' },
-    { label: 'Michael Scott', value: 'Michael Scott' }
-  ];
+  technicianOptions: { label: string; value: string }[] = [];
 
   dateOptions = [
-    { label: 'Today (Sep 20)', value: '2026-09-20' },
-    { label: 'Tomorrow (Sep 21)', value: '2026-09-21' },
-    { label: 'Yesterday (Sep 19)', value: '2026-09-19' }
+    { label: 'Today', value: new Date().toISOString().split('T')[0] }
   ];
 
   ngOnInit(): void {}

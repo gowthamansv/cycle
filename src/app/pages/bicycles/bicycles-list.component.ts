@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
@@ -10,7 +10,7 @@ import { TagModule } from 'primeng/tag';
 import { DialogModule } from 'primeng/dialog';
 import { TooltipModule } from 'primeng/tooltip';
 import { MessageModule } from 'primeng/message';
-import { CycleDataService } from '../../services/cycle-data.service';
+import { TicketService } from '../../services/ticket.service';
 import { Bicycle, BicycleType } from '../../models/cycle-management.models';
 import { AuthService } from '../../common/services/auth.service';
 import { CycleService } from '../../services/cycle.service';
@@ -296,8 +296,8 @@ import { CreateCycleRequest } from '../../models/api.models';
             <tr>
               <td colspan="9" class="text-center p-8 text-muted-color">
                 <i class="pi pi-compass text-4xl mb-3 block text-surface-400"></i>
-                <div>No bicycles in view.</div>
-                <div class="text-xs text-muted-color mt-1">Ready for GET /api/cycles backend endpoint release.</div>
+                <div class="font-medium text-surface-700 dark:text-surface-300">No bicycles available.</div>
+                <div class="text-xs text-muted-color mt-1">Backend service does not expose a global GET /api/cycles endpoint. Bicycles linked to active tickets will appear here.</div>
               </td>
             </tr>
           </ng-template>
@@ -379,12 +379,15 @@ import { CreateCycleRequest } from '../../models/api.models';
   `
 })
 export class BicyclesListComponent implements OnInit {
-  protected dataService = inject(CycleDataService);
   protected authService = inject(AuthService);
   protected cycleService = inject(CycleService);
   protected miscService = inject(MiscService);
+  protected ticketService = inject(TicketService);
   private notificationService = inject(AppNotificationService);
   private router = inject(Router);
+
+  bicycles = signal<Bicycle[]>([]);
+  isLoading = signal<boolean>(false);
 
   selectedType: BicycleType | null = null;
   selectedStatus: string | null = null;
@@ -398,7 +401,7 @@ export class BicyclesListComponent implements OnInit {
     type: 'Road' as BicycleType,
     frameNumber: '',
     serialNumber: '',
-    purchaseDate: '2026-09-20',
+    purchaseDate: '',
     notes: ''
   };
 
@@ -413,10 +416,10 @@ export class BicyclesListComponent implements OnInit {
     serialNumber: '',
     customerId: '',
     customerName: '',
-    purchaseDate: '2026-09-20',
+    purchaseDate: '',
     status: 'Good' as const,
-    lastServiceDate: '2026-09-20',
-    nextServiceDate: '2027-03-20',
+    lastServiceDate: '',
+    nextServiceDate: '',
     gearSystem: '',
     color: '',
     notes: ''
@@ -443,6 +446,48 @@ export class BicyclesListComponent implements OnInit {
 
   ngOnInit(): void {
     this.refreshCustomerOptions();
+    this.loadBicycles();
+  }
+
+  loadBicycles(): void {
+    this.isLoading.set(true);
+    this.ticketService.getTickets().subscribe({
+      next: (tickets) => {
+        const bikesMap = new Map<string, Bicycle>();
+        for (const t of (tickets || [])) {
+          if (!t.cycleId) continue;
+          if (!bikesMap.has(t.cycleId)) {
+            const parts = (t.cycleModel || 'Bicycle').split(' ');
+            const brand = parts[0] || 'Brand';
+            const model = parts.slice(1).join(' ') || t.cycleModel || 'Model';
+            bikesMap.set(t.cycleId, {
+              id: t.cycleId,
+              name: t.cycleModel || 'Bicycle',
+              brand: brand,
+              model: model,
+              type: (t.udF1 || 'Road') as any,
+              customerId: t.customerId,
+              customerName: t.customerName || 'Customer',
+              frameNumber: '',
+              serialNumber: t.serialNumber || 'N/A',
+              purchaseDate: 'N/A',
+              status: (t.status === 'Completed' ? 'Good' : 'In Service') as any,
+              lastServiceDate: t.createdAt ? t.createdAt.split('T')[0] : 'N/A',
+              nextServiceDate: 'N/A',
+              gearSystem: 'Standard',
+              color: 'Standard',
+              notes: t.description || ''
+            });
+          }
+        }
+        this.bicycles.set(Array.from(bikesMap.values()));
+        this.isLoading.set(false);
+      },
+      error: () => {
+        this.bicycles.set([]);
+        this.isLoading.set(false);
+      }
+    });
   }
 
   private refreshCustomerOptions(): void {
@@ -454,29 +499,20 @@ export class BicyclesListComponent implements OnInit {
             value: c.id
           }));
         } else {
-          this.customerOptions = this.dataService.customers().map(c => ({
-            label: `${c.name} (${c.phone})`,
-            value: c.id
-          }));
+          this.customerOptions = [];
         }
         if (this.customerOptions.length > 0 && !this.userBikeForm.customerId) {
           this.userBikeForm.customerId = this.customerOptions[0].value;
         }
       },
       error: () => {
-        this.customerOptions = this.dataService.customers().map(c => ({
-          label: `${c.name} (${c.phone})`,
-          value: c.id
-        }));
-        if (this.customerOptions.length > 0 && !this.userBikeForm.customerId) {
-          this.userBikeForm.customerId = this.customerOptions[0].value;
-        }
+        this.customerOptions = [];
       }
     });
   }
 
   get filteredBicycles(): Bicycle[] {
-    return this.dataService.bicycles().filter(b => {
+    return this.bicycles().filter(b => {
       const matchesType = !this.selectedType || b.type === this.selectedType;
       const matchesStatus = !this.selectedStatus || b.status === this.selectedStatus;
 
@@ -494,7 +530,7 @@ export class BicyclesListComponent implements OnInit {
       return;
     }
 
-    const serial = this.userBikeForm.serialNumber.trim() || `SN-${Math.floor(100000 + Math.random() * 900000)}`;
+    const serial = this.userBikeForm.serialNumber.trim() || `SN-${Date.now()}`;
     const fullModel = `${this.userBikeForm.brand.trim()} ${this.userBikeForm.model.trim()}`.trim();
 
     this.isSubmitting = true;
@@ -505,35 +541,16 @@ export class BicyclesListComponent implements OnInit {
     };
 
     this.cycleService.createCycle(reqPayload).subscribe({
-      next: (res) => {
+      next: () => {
         this.isSubmitting = false;
-
-        const cust = this.dataService.customers().find(c => c.id === this.userBikeForm.customerId);
-        const customerName = cust ? cust.name : 'Registered Rider';
-
-        this.dataService.addBicycle({
-          name: fullModel,
-          brand: this.userBikeForm.brand.trim(),
-          model: this.userBikeForm.model.trim(),
-          type: this.userBikeForm.type,
-          customerId: this.userBikeForm.customerId,
-          customerName: customerName,
-          frameNumber: this.userBikeForm.frameNumber.trim() || `FRM-${Math.floor(10000 + Math.random() * 90000)}`,
-          serialNumber: serial,
-          purchaseDate: this.userBikeForm.purchaseDate || '2026-09-20',
-          status: 'Good',
-          lastServiceDate: '2026-09-20',
-          nextServiceDate: '2027-03-20',
-          gearSystem: 'Standard',
-          color: 'Default',
-          notes: this.userBikeForm.notes.trim()
-        });
 
         this.notificationService.showApiSuccess(
           'create',
           'Bicycle',
           `${fullModel} registered successfully.`
         );
+
+        this.loadBicycles();
 
         // Reset user form
         this.userBikeForm = {
@@ -543,7 +560,7 @@ export class BicyclesListComponent implements OnInit {
           type: 'Road',
           frameNumber: '',
           serialNumber: '',
-          purchaseDate: '2026-09-20',
+          purchaseDate: '',
           notes: ''
         };
       },
@@ -566,15 +583,15 @@ export class BicyclesListComponent implements OnInit {
       brand: '',
       model: '',
       type: 'Road',
-      frameNumber: `FRM-${Math.floor(10000 + Math.random() * 90000)}`,
-      serialNumber: `SN-${Math.floor(100000 + Math.random() * 900000)}`,
+      frameNumber: '',
+      serialNumber: '',
       customerId: custs.length > 0 ? custs[0].value : '',
       customerName: '',
-      purchaseDate: '2026-09-20',
+      purchaseDate: '',
       status: 'Good',
-      lastServiceDate: '2026-09-20',
-      nextServiceDate: '2027-03-20',
-      gearSystem: 'Shimano 105',
+      lastServiceDate: '',
+      nextServiceDate: '',
+      gearSystem: '',
       color: '',
       notes: ''
     };
@@ -591,7 +608,7 @@ export class BicyclesListComponent implements OnInit {
     }
 
     const fullModel = `${this.newBike.brand.trim()} ${this.newBike.model.trim()}`.trim();
-    const serial = this.newBike.serialNumber.trim() || `SN-${Math.floor(100000 + Math.random() * 900000)}`;
+    const serial = this.newBike.serialNumber.trim() || `SN-${Date.now()}`;
 
     this.isSubmitting = true;
     const reqPayload: CreateCycleRequest = {
@@ -601,24 +618,15 @@ export class BicyclesListComponent implements OnInit {
     };
 
     this.cycleService.createCycle(reqPayload).subscribe({
-      next: (res) => {
+      next: () => {
         this.isSubmitting = false;
-        const cust = this.dataService.customers().find(c => c.id === this.newBike.customerId);
-        if (cust) {
-          this.newBike.customerName = cust.name;
-        }
-
-        this.dataService.addBicycle({
-          ...this.newBike,
-          name: fullModel
-        });
-
         this.addDialogVisible = false;
         this.notificationService.showApiSuccess(
           'create',
           'Bicycle',
           `${fullModel} registered successfully.`
         );
+        this.loadBicycles();
       },
       error: (err) => {
         this.isSubmitting = false;

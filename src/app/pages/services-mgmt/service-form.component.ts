@@ -12,7 +12,6 @@ import { ButtonModule } from 'primeng/button';
 import { MessageModule } from 'primeng/message';
 import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
-import { CycleDataService } from '../../services/cycle-data.service';
 import { TicketService } from '../../services/ticket.service';
 import { MiscService } from '../../services/misc.service';
 import { CycleService } from '../../services/cycle.service';
@@ -703,7 +702,6 @@ export class ServiceFormComponent implements OnInit, OnDestroy {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private notificationService = inject(AppNotificationService);
-  protected dataService = inject(CycleDataService);
   protected ticketService = inject(TicketService);
   protected miscService = inject(MiscService);
   protected cycleService = inject(CycleService);
@@ -842,11 +840,7 @@ export class ServiceFormComponent implements OnInit, OnDestroy {
             data: c
           }));
         } else {
-          this.customerOptions = this.dataService.customers().map(c => ({
-            label: `${c.name} (${c.phone})`,
-            value: c.id,
-            data: { id: c.id, name: c.name, phoneNumber: c.phone, email: c.email }
-          }));
+          this.customerOptions = [];
         }
 
         // 2. Statuses
@@ -856,12 +850,7 @@ export class ServiceFormComponent implements OnInit, OnDestroy {
             value: s.id
           }));
         } else {
-          this.statusOptions = [
-            { label: 'Waiting', value: '46c820b1-50e5-4f7f-8cae-736a61b8fbf1' },
-            { label: 'Assigned', value: '46c820b1-50e5-4f7f-8cae-736a61b8fbf2' },
-            { label: 'In Progress', value: '46c820b1-50e5-4f7f-8cae-736a61b8fbf3' },
-            { label: 'Completed', value: '46c820b1-50e5-4f7f-8cae-736a61b8fbf4' }
-          ];
+          this.statusOptions = [];
         }
         if (!this.serviceForm.get('statusId')?.value && this.statusOptions.length > 0) {
           this.serviceForm.patchValue({ statusId: this.statusOptions[0].value });
@@ -874,12 +863,7 @@ export class ServiceFormComponent implements OnInit, OnDestroy {
             value: p.id
           }));
         } else {
-          this.priorityOptions = [
-            { label: 'Low', value: 'e5e9b862-246d-4767-aeb8-796ec1ba0001' },
-            { label: 'Medium', value: 'e5e9b862-246d-4767-aeb8-796ec1ba0002' },
-            { label: 'High', value: 'e5e9b862-246d-4767-aeb8-796ec1ba0003' },
-            { label: 'Urgent', value: 'e5e9b862-246d-4767-aeb8-796ec1ba0004' }
-          ];
+          this.priorityOptions = [];
         }
         if (!this.serviceForm.get('priorityId')?.value && this.priorityOptions.length > 0) {
           const medium = this.priorityOptions.find(p => p.label.toLowerCase().includes('medium')) || this.priorityOptions[0];
@@ -894,10 +878,7 @@ export class ServiceFormComponent implements OnInit, OnDestroy {
             data: u
           }));
         } else {
-          this.assigneeOptions = this.dataService.technicians().map(t => ({
-            label: `${t.name} — ${t.specialization}`,
-            value: t.id
-          }));
+          this.assigneeOptions = [];
         }
         if (!this.serviceForm.get('assigneeId')?.value && this.assigneeOptions.length > 0) {
           this.serviceForm.patchValue({ assigneeId: this.assigneeOptions[0].value });
@@ -909,14 +890,9 @@ export class ServiceFormComponent implements OnInit, OnDestroy {
       error: () => {
         this.isLoadingCustomers = false;
         this.isLoadingAssignees = false;
-        this.customerOptions = this.dataService.customers().map(c => ({
-          label: `${c.name} (${c.phone})`,
-          value: c.id
-        }));
-        this.assigneeOptions = this.dataService.technicians().map(t => ({
-          label: `${t.name} — ${t.specialization}`,
-          value: t.id
-        }));
+        this.customerOptions = [];
+        this.assigneeOptions = [];
+        this.notificationService.showError('Lookup Notice', 'Unable to retrieve dropdown options from API.');
         this.processInitialParameters();
       }
     });
@@ -1029,16 +1005,14 @@ export class ServiceFormComponent implements OnInit, OnDestroy {
     // Prepopulate contact details from customer records
     const custOption = this.customerOptions.find(c => c.value === customerId);
     const backendCust = custOption?.data || this.miscService.customers().find(c => c.id === customerId);
-    const localCust = this.dataService.customers().find(c => c.id === customerId);
 
-    const phone = backendCust?.phoneNumber || localCust?.phone || '';
-    const email = backendCust?.email || localCust?.email || '';
-    const company = localCust?.companyName || '';
+    const phone = backendCust?.phoneNumber || '';
+    const email = backendCust?.email || '';
 
     this.serviceForm.patchValue({
       contactPhone: phone,
       contactEmail: email,
-      companyName: company || this.serviceForm.get('companyName')?.value || ''
+      companyName: this.serviceForm.get('companyName')?.value || ''
     });
 
     // Fetch cycles for customer
@@ -1068,10 +1042,9 @@ export class ServiceFormComponent implements OnInit, OnDestroy {
     this.cycleFetchSubscription = this.miscService.getCustomerCycles(customerId).pipe(
       catchError((err) => {
         this.isLoadingCycles = false;
-        console.log(err)
         this.notificationService.showWarning(
           'Cycles API Notice',
-          `Could not retrieve cycles from /api/misc/customers/${customerId}/cycles. Falling back to local fleet.`
+          `Could not retrieve cycles from /api/misc/customers/${customerId}/cycles.`
         );
         return of([] as CustomerCycleLookup[]);
       })
@@ -1079,29 +1052,7 @@ export class ServiceFormComponent implements OnInit, OnDestroy {
       next: (cycles) => {
         this.isLoadingCycles = false;
 
-        let mappedCycles: CustomerCycleLookup[] = cycles || [];
-
-        // If backend returned empty, check local fleet for this customer
-        if (mappedCycles.length === 0) {
-          const fleetBikes = this.dataService.bicycles().filter(b => b.customerId === customerId);
-          if (fleetBikes.length > 0) {
-            mappedCycles = fleetBikes.map(b => ({
-              id: b.id,
-              cycleId: b.id,
-              customerId: b.customerId,
-              brand: b.brand,
-              model: b.model,
-              serialNumber: b.serialNumber || b.frameNumber,
-              frameNumber: b.frameNumber,
-              bicycleType: b.type,
-              brakeSystem: b.brakeType,
-              drivetrain: b.gearSystem,
-              wheelSize: b.wheelSize,
-              tyreSize: b.tyreSize,
-              status: b.status
-            }));
-          }
-        }
+        const mappedCycles: CustomerCycleLookup[] = cycles || [];
 
         if (mappedCycles.length > 0) {
           this.noCyclesFound = false;
@@ -1157,17 +1108,16 @@ export class ServiceFormComponent implements OnInit, OnDestroy {
 
     const selectedOption = this.cycleOptions.find(o => o.value === cycleId);
     const cycleData = selectedOption?.data;
-    const fleetBike = this.dataService.bicycles().find(b => b.id === cycleId);
 
-    const brand = cycleData?.brand || fleetBike?.brand || 'Premium Brand';
-    const model = cycleData?.model || cycleData?.cycleModel || fleetBike?.model || 'Road / Hybrid Model';
-    const bicycleType = cycleData?.bicycleType || cycleData?.type || fleetBike?.type || 'Road';
-    const serialNumber = cycleData?.serialNumber || cycleData?.frameNumber || fleetBike?.serialNumber || fleetBike?.frameNumber || 'N/A';
-    const brakeSystem = cycleData?.brakeSystem || cycleData?.brakeType || fleetBike?.brakeType || 'Hydraulic Disc Brake';
-    const drivetrain = cycleData?.drivetrain || cycleData?.gearSystem || fleetBike?.gearSystem || 'Shimano 12-Speed';
-    const wheelSize = cycleData?.wheelSize || fleetBike?.wheelSize || '700c';
-    const tyreSize = cycleData?.tyreSize || fleetBike?.tyreSize || '32c Tubeless';
-    const wheelTyreSize = `${wheelSize} • ${tyreSize}`;
+    const brand = cycleData?.brand || '';
+    const model = cycleData?.model || cycleData?.cycleModel || 'Bicycle';
+    const bicycleType = cycleData?.bicycleType || cycleData?.type || 'Road';
+    const serialNumber = cycleData?.serialNumber || cycleData?.frameNumber || 'N/A';
+    const brakeSystem = cycleData?.brakeSystem || cycleData?.brakeType || 'Standard';
+    const drivetrain = cycleData?.drivetrain || cycleData?.gearSystem || 'Standard';
+    const wheelSize = cycleData?.wheelSize || '';
+    const tyreSize = cycleData?.tyreSize || '';
+    const wheelTyreSize = wheelSize && tyreSize ? `${wheelSize} • ${tyreSize}` : (wheelSize || tyreSize || 'Standard');
 
     this.selectedBicycle = {
       id: cycleId,
@@ -1178,7 +1128,7 @@ export class ServiceFormComponent implements OnInit, OnDestroy {
       brakeSystem,
       drivetrain,
       wheelTyreSize,
-      status: cycleData?.status || fleetBike?.status || 'Active'
+      status: cycleData?.status || 'Active'
     };
 
     // Auto populate UDF6 bicycle type if empty

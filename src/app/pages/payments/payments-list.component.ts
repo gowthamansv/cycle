@@ -77,6 +77,16 @@ import { PaymentRecord } from '../../models/cycle-management.models';
               <td><span class="text-xs text-muted-color font-mono">{{ p.date }}</span></td>
             </tr>
           </ng-template>
+
+          <ng-template #emptymessage>
+            <tr>
+              <td colspan="7" class="text-center p-8 text-muted-color">
+                <i class="pi pi-credit-card text-4xl mb-3 block text-surface-400"></i>
+                <div class="font-medium text-surface-700 dark:text-surface-300">No payment records found.</div>
+                <div class="text-xs text-muted-color mt-1">Payment endpoint (GET /api/payments) is not provided by the backend service.</div>
+              </td>
+            </tr>
+          </ng-template>
         </p-table>
       </div>
     </div>

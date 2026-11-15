@@ -33,8 +33,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
         // Identify auth endpoints and login page routes to avoid intercepting legitimate login failures
         const isAuthEndpoint =
           req.url.includes('/auth/login') ||
-          req.url.includes('/api/auth/login') ||
-          req.url.includes('api/test/jwt');
+          req.url.includes('/api/auth/login');
 
         const currentRoute = router.url || '';
         const isLoginRoute =

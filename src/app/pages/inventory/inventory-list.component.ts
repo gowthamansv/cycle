@@ -88,6 +88,16 @@ import { InventoryItem } from '../../models/cycle-management.models';
               </td>
             </tr>
           </ng-template>
+
+          <ng-template #emptymessage>
+            <tr>
+              <td colspan="9" class="text-center p-8 text-muted-color">
+                <i class="pi pi-box text-4xl mb-3 block text-surface-400"></i>
+                <div class="font-medium text-surface-700 dark:text-surface-300">No inventory items recorded.</div>
+                <div class="text-xs text-muted-color mt-1">Inventory endpoint (GET /api/inventory) is not provided by the backend service.</div>
+              </td>
+            </tr>
+          </ng-template>
         </p-table>
       </div>
     </div>

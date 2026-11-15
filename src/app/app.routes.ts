@@ -92,7 +92,7 @@ export const routes: Routes = [
       // { path: 'appointments/new', component: AppointmentFormComponent, canActivate: [adminGuard], title: 'New Appointment | Cycle Service Center' },
 
       // Service Jobs (Redirected to unified Services Management)
-      // { path: 'service-jobs', redirectTo: 'services', pathMatch: 'full' },
+      { path: 'service-jobs', redirectTo: 'services', pathMatch: 'full' },
 
       // Customers (Accessible to both - User sees direct create interface)
       { path: 'customers', component: CustomersListComponent, title: 'Customers | Cycle Service Center' },

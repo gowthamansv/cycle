@@ -451,7 +451,7 @@ export class AppointmentFormComponent implements OnInit {
       cycleType: formVal.cycleType,
       serviceType: formVal.serviceType,
       technicianId: formVal.technicianId,
-      technicianName: tech ? tech.name : 'Alex Rivera',
+      technicianName: tech ? tech.name : 'Unassigned',
       date: dateStr,
       time: formVal.time,
       notes: formVal.notes

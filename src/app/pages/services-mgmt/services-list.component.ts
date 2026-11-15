@@ -17,7 +17,6 @@ import { MessageModule } from 'primeng/message';
 import QRCode from 'qrcode';
 import { TicketService } from '../../services/ticket.service';
 import { MiscService } from '../../services/misc.service';
-import { CycleDataService } from '../../services/cycle-data.service';
 import { FreewheelCatalogService } from '../../services/freewheel-catalog.service';
 import { AppConfigService } from '../../app.config.service';
 import { AppNotificationService } from '../../common/services/notification.service';
@@ -869,7 +868,6 @@ export class ServicesListComponent implements OnInit {
   private fb = inject(FormBuilder);
   private ticketService = inject(TicketService);
   private miscService = inject(MiscService);
-  private dataService = inject(CycleDataService);
   private catalogService = inject(FreewheelCatalogService);
   private configService = inject(AppConfigService);
   private notificationService = inject(AppNotificationService);
@@ -1072,29 +1070,20 @@ export class ServicesListComponent implements OnInit {
   }
 
   private populateCycleOptions(customerId?: string): void {
-    const allBikes = this.dataService.bicycles();
-
     if (customerId) {
-      const customerBikes = allBikes.filter(b => b.customerId === customerId);
-      if (customerBikes.length > 0) {
-        this.cycleOptions = customerBikes.map(b => ({
-          label: `${b.brand} ${b.model} (${b.type || 'Cycle'}) [S/N: ${b.serialNumber || b.frameNumber || 'N/A'}]`,
-          value: b.id
-        }));
-      } else {
-        this.cycleOptions = [
-          { label: `Primary Cycle (Customer ID: ${customerId.substring(0, 8)})`, value: customerId },
-          ...allBikes.map(b => ({
-            label: `${b.brand} ${b.model} (${b.customerName || 'Registered Bike'})`,
-            value: b.id
-          }))
-        ];
-      }
+      this.miscService.getCustomerCycles(customerId).subscribe({
+        next: (cycles) => {
+          this.cycleOptions = (cycles || []).map(b => ({
+            label: `${b.brand || ''} ${b.model || b.cycleModel || 'Bicycle'} (${b.type || b.bicycleType || 'Cycle'}) [S/N: ${b.serialNumber || b.frameNumber || 'N/A'}]`.trim(),
+            value: b.cycleId || b.id || ''
+          }));
+        },
+        error: () => {
+          this.cycleOptions = [];
+        }
+      });
     } else {
-      this.cycleOptions = allBikes.map(b => ({
-        label: `${b.brand} ${b.model} (${b.customerName || 'Registered Bike'}) [${b.id}]`,
-        value: b.id
-      }));
+      this.cycleOptions = [];
     }
   }
 
@@ -1231,30 +1220,54 @@ export class ServicesListComponent implements OnInit {
 
   openViewDialog(ticket: TicketResponseDto): void {
     this.selectedTicketForView = ticket;
-    // Find bicycle in store for 7 technical specifications display
-    this.viewBicycleSpecs = this.dataService.bicycles().find(
-      b => b.id === ticket.cycleId || b.customerId === ticket.customerId || b.model === ticket.cycleModel
-    ) || null;
+    this.viewBicycleSpecs = null;
+
+    if (ticket.customerId) {
+      this.miscService.getCustomerCycles(ticket.customerId).subscribe({
+        next: (cycles) => {
+          const match = (cycles || []).find(b => (b.cycleId && b.cycleId === ticket.cycleId) || (b.id && b.id === ticket.cycleId));
+          if (match) {
+            this.viewBicycleSpecs = {
+              id: match.cycleId || match.id || '',
+              customerId: match.customerId || ticket.customerId,
+              customerName: ticket.customerName,
+              brand: match.brand || '',
+              model: match.model || match.cycleModel || ticket.cycleModel || 'Bicycle',
+              name: `${match.brand || ''} ${match.model || match.cycleModel || ticket.cycleModel || 'Bicycle'}`.trim(),
+              type: (match.bicycleType || match.type || 'Road') as any,
+              serialNumber: match.serialNumber || ticket.serialNumber || 'N/A',
+              frameNumber: match.frameNumber || '',
+              brakeType: (match.brakeType || match.brakeSystem || 'Hydraulic Disc') as any,
+              gearSystem: match.gearSystem || match.drivetrain || 'Standard',
+              wheelSize: match.wheelSize || '700c',
+              tyreSize: match.tyreSize || '28mm',
+              purchaseDate: 'N/A',
+              status: 'Good',
+              lastServiceDate: ticket.createdAt ? ticket.createdAt.split('T')[0] : 'N/A',
+              nextServiceDate: 'N/A'
+            };
+          }
+        },
+        error: () => {
+          this.viewBicycleSpecs = null;
+        }
+      });
+    }
 
     this.generateQrCodeForTicket(ticket);
     this.viewDialogVisible = true;
   }
 
   getBicycleDisplayName(ticket: TicketResponseDto): string {
-    if (ticket.cycleModel) return ticket.cycleModel;
-    const bike = this.dataService.bicycles().find(b => b.id === ticket.cycleId);
-    return bike ? `${bike.brand} ${bike.model}` : 'Bicycle';
+    return ticket.cycleModel || 'Bicycle';
   }
 
   getBicycleSerialNumber(ticket: TicketResponseDto): string {
-    if (ticket.serialNumber) return ticket.serialNumber;
-    const bike = this.dataService.bicycles().find(b => b.id === ticket.cycleId);
-    return bike ? (bike.serialNumber || bike.frameNumber || '') : '';
+    return ticket.serialNumber || 'N/A';
   }
 
   getBicycleType(ticket: TicketResponseDto): string {
-    const bike = this.dataService.bicycles().find(b => b.id === ticket.cycleId);
-    return bike ? bike.type : '';
+    return ticket.udF1 || '';
   }
 
   generateQrCodeForTicket(ticket: TicketResponseDto): void {

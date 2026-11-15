@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -11,13 +11,12 @@ import { TagModule } from 'primeng/tag';
 import { DialogModule } from 'primeng/dialog';
 import { TooltipModule } from 'primeng/tooltip';
 import { MessageModule } from 'primeng/message';
-import { CycleDataService } from '../../services/cycle-data.service';
-import { Technician, TechnicianAvailability } from '../../models/cycle-management.models';
 import { UserService } from '../../services/user.service';
 import { MiscService } from '../../services/misc.service';
+import { TicketService } from '../../services/ticket.service';
 import { AuthService } from '../../common/services/auth.service';
 import { AppNotificationService } from '../../common/services/notification.service';
-import { CreateUserRequest } from '../../models/api.models';
+import { CreateUserRequest, MiscUser } from '../../models/api.models';
 
 @Component({
   selector: 'app-technicians-list',
@@ -44,17 +43,29 @@ import { CreateUserRequest } from '../../models/api.models';
           <div class="flex items-center gap-2">
             <h1 class="text-2xl font-bold text-surface-900 dark:text-surface-0 tracking-tight">Technicians & Mechanics</h1>
             <span class="text-xs px-2.5 py-1 rounded-full font-semibold bg-orange-100 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300">
-              {{ filteredTechnicians.length }} Staff Members
+              {{ users().length }} Staff Members
             </span>
           </div>
-          <p class="text-sm text-muted-color mt-1">Manage workshop staff, mechanical specializations, certifications and active queue capacities.</p>
+          <p class="text-sm text-muted-color mt-1">Live workshop staff directory and active ticket assignments powered by <code class="font-mono text-xs bg-surface-100 dark:bg-surface-800 px-1.5 py-0.5 rounded">/api/misc/users</code>.</p>
         </div>
 
         <div class="flex items-center gap-3" *ngIf="authService.isAdmin()">
           <p-button
+            label="Refresh"
+            icon="pi pi-refresh"
+            [outlined]="true"
+            severity="secondary"
+            size="small"
+            [loading]="miscService.isLoading()"
+            (click)="loadStaff()"
+          ></p-button>
+
+          <p-button
             label="+ Add Staff / User"
             icon="pi pi-user-plus"
             (click)="openAddUserModal()"
+            styleClass="bg-orange-500 hover:bg-orange-600 border-none text-white font-semibold shadow-sm"
+            size="small"
           ></p-button>
         </div>
       </div>
@@ -64,8 +75,8 @@ import { CreateUserRequest } from '../../models/api.models';
         <div class="col-span-6 sm:col-span-3">
           <div class="card p-3 mb-0 shadow-sm border border-surface-200 dark:border-surface-700 flex items-center justify-between">
             <div>
-              <span class="text-xs text-muted-color uppercase font-semibold">Active Staff</span>
-              <div class="text-xl font-bold text-surface-900 dark:text-surface-0">{{ dataService.technicians().length }}</div>
+              <span class="text-xs text-muted-color uppercase font-semibold">Total Staff</span>
+              <div class="text-xl font-bold text-surface-900 dark:text-surface-0">{{ users().length }}</div>
             </div>
             <div class="w-8 h-8 rounded bg-blue-100 dark:bg-blue-950/60 flex items-center justify-center text-blue-600">
               <i class="pi pi-users"></i>
@@ -76,8 +87,8 @@ import { CreateUserRequest } from '../../models/api.models';
         <div class="col-span-6 sm:col-span-3">
           <div class="card p-3 mb-0 shadow-sm border border-surface-200 dark:border-surface-700 flex items-center justify-between">
             <div>
-              <span class="text-xs text-muted-color uppercase font-semibold">On Bench / Working</span>
-              <div class="text-xl font-bold text-amber-600 dark:text-amber-400">{{ getCountByAvailability('On Job') }}</div>
+              <span class="text-xs text-muted-color uppercase font-semibold">Staff With Active Tasks</span>
+              <div class="text-xl font-bold text-amber-600 dark:text-amber-400">{{ staffWithActiveJobsCount() }}</div>
             </div>
             <div class="w-8 h-8 rounded bg-amber-100 dark:bg-amber-950/60 flex items-center justify-center text-amber-600">
               <i class="pi pi-wrench"></i>
@@ -88,8 +99,8 @@ import { CreateUserRequest } from '../../models/api.models';
         <div class="col-span-6 sm:col-span-3">
           <div class="card p-3 mb-0 shadow-sm border border-surface-200 dark:border-surface-700 flex items-center justify-between">
             <div>
-              <span class="text-xs text-muted-color uppercase font-semibold">Available</span>
-              <div class="text-xl font-bold text-emerald-600 dark:text-emerald-400">{{ getCountByAvailability('Available') }}</div>
+              <span class="text-xs text-muted-color uppercase font-semibold">Available Staff</span>
+              <div class="text-xl font-bold text-emerald-600 dark:text-emerald-400">{{ availableStaffCount() }}</div>
             </div>
             <div class="w-8 h-8 rounded bg-emerald-100 dark:bg-emerald-950/60 flex items-center justify-center text-emerald-600">
               <i class="pi pi-check-circle"></i>
@@ -100,11 +111,11 @@ import { CreateUserRequest } from '../../models/api.models';
         <div class="col-span-6 sm:col-span-3">
           <div class="card p-3 mb-0 shadow-sm border border-surface-200 dark:border-surface-700 flex items-center justify-between">
             <div>
-              <span class="text-xs text-muted-color uppercase font-semibold">Avg Rating</span>
-              <div class="text-xl font-bold text-purple-600 dark:text-purple-400">4.85 ★</div>
+              <span class="text-xs text-muted-color uppercase font-semibold">Assigned Tickets</span>
+              <div class="text-xl font-bold text-purple-600 dark:text-purple-400">{{ totalAssignedTicketsCount() }}</div>
             </div>
             <div class="w-8 h-8 rounded bg-purple-100 dark:bg-purple-950/60 flex items-center justify-center text-purple-600">
-              <i class="pi pi-star-fill"></i>
+              <i class="pi pi-ticket"></i>
             </div>
           </div>
         </div>
@@ -113,7 +124,8 @@ import { CreateUserRequest } from '../../models/api.models';
       <!-- Technicians Table -->
       <div class="card p-0 shadow-sm border border-surface-200 dark:border-surface-700 overflow-hidden">
         <p-table
-          [value]="filteredTechnicians"
+          [value]="users()"
+          [loading]="miscService.isLoading()"
           [paginator]="true"
           [rows]="10"
           [rowsPerPageOptions]="[5, 10, 15, 20]"
@@ -123,55 +135,47 @@ import { CreateUserRequest } from '../../models/api.models';
         >
           <ng-template #header>
             <tr>
-              <th pSortableColumn="name" style="min-width: 14rem">Technician <p-sortIcon field="name"></p-sortIcon></th>
-              <th style="min-width: 15rem">Specialization</th>
-              <th pSortableColumn="activeJobsCount" style="min-width: 8rem" class="text-center">Active Jobs <p-sortIcon field="activeJobsCount"></p-sortIcon></th>
-              <th pSortableColumn="completedJobsCount" style="min-width: 9rem" class="text-center">Completed <p-sortIcon field="completedJobsCount"></p-sortIcon></th>
-              <th pSortableColumn="availability" style="min-width: 9rem">Availability <p-sortIcon field="availability"></p-sortIcon></th>
-              <th pSortableColumn="status" style="min-width: 7.5rem">Status <p-sortIcon field="status"></p-sortIcon></th>
+              <th style="min-width: 14rem">Staff Member</th>
+              <th style="min-width: 14rem">Email Address</th>
+              <th style="min-width: 8rem" class="text-center">Active Jobs</th>
+              <th style="min-width: 9rem" class="text-center">Completed</th>
+              <th style="min-width: 8rem">Status</th>
               <th style="min-width: 8rem" class="text-center">Actions</th>
             </tr>
           </ng-template>
 
-          <ng-template #body let-tech>
+          <ng-template #body let-user>
             <tr>
               <td>
                 <div class="flex items-center gap-3">
-                  <img [src]="tech.avatar" [alt]="tech.name" class="w-10 h-10 rounded-full border border-surface-200 dark:border-surface-700 object-cover" />
+                  <div class="w-9 h-9 rounded-full bg-orange-500/10 text-orange-600 dark:text-orange-400 font-bold flex items-center justify-center text-xs shrink-0">
+                    {{ getUserInitials(user) }}
+                  </div>
                   <div>
-                    <a [routerLink]="['/technicians', tech.id]" class="font-bold text-surface-900 dark:text-surface-0 text-sm hover:text-primary hover:underline">
-                      {{ tech.name }}
+                    <a [routerLink]="['/technicians', user.id]" class="font-bold text-surface-900 dark:text-surface-0 text-sm hover:text-primary hover:underline">
+                      {{ getUserFullName(user) }}
                     </a>
-                    <div class="text-[11px] text-muted-color">{{ tech.email }}</div>
+                    <div class="text-[11px] text-muted-color font-mono">ID: #{{ user.id ? (user.id.substring(0, 8) | uppercase) : 'N/A' }}</div>
                   </div>
                 </div>
               </td>
               <td>
-                <div class="text-xs font-semibold text-surface-800 dark:text-surface-200">{{ tech.specialization }}</div>
-                <div class="text-[11px] text-muted-color truncate max-w-[200px]">{{ tech.certification || 'Certified Bike Tech' }}</div>
+                <div class="text-xs font-mono text-surface-800 dark:text-surface-200">{{ user.email || '—' }}</div>
               </td>
               <td class="text-center">
                 <span class="inline-flex items-center justify-center font-bold text-xs bg-orange-100 dark:bg-orange-950/60 text-orange-600 px-2.5 py-0.5 rounded-full">
-                  {{ tech.activeJobsCount }}
+                  {{ getActiveJobsForUser(user.id) }}
                 </span>
               </td>
               <td class="text-center">
                 <span class="font-semibold text-xs text-surface-700 dark:text-surface-300">
-                  {{ tech.completedJobsCount }}
+                  {{ getCompletedJobsForUser(user.id) }}
                 </span>
               </td>
               <td>
                 <p-tag
-                  [value]="tech.availability"
-                  [severity]="getAvailabilitySeverity(tech.availability)"
-                  [rounded]="true"
-                  styleClass="text-xs"
-                ></p-tag>
-              </td>
-              <td>
-                <p-tag
-                  [value]="tech.status"
-                  [severity]="tech.status === 'Active' ? 'success' : 'secondary'"
+                  value="Active Staff"
+                  severity="success"
                   styleClass="text-xs"
                 ></p-tag>
               </td>
@@ -183,17 +187,8 @@ import { CreateUserRequest } from '../../models/api.models';
                     [text]="true"
                     severity="secondary"
                     size="small"
-                    pTooltip="View Profile & Workload"
-                    [routerLink]="['/technicians', tech.id]"
-                  ></p-button>
-                  <p-button
-                    icon="pi pi-sync"
-                    [rounded]="true"
-                    [text]="true"
-                    severity="info"
-                    size="small"
-                    pTooltip="Toggle Shift State"
-                    (click)="toggleAvailability(tech)"
+                    pTooltip="View Staff Profile & Workload"
+                    [routerLink]="['/technicians', user.id]"
                   ></p-button>
                 </div>
               </td>
@@ -202,9 +197,10 @@ import { CreateUserRequest } from '../../models/api.models';
 
           <ng-template #emptymessage>
             <tr>
-              <td colspan="7" class="text-center p-8 text-muted-color">
+              <td colspan="6" class="text-center p-8 text-muted-color">
                 <i class="pi pi-user-times text-4xl mb-3 block text-surface-400"></i>
-                No technician profiles found.
+                <div class="font-medium text-surface-700 dark:text-surface-300">No staff members found.</div>
+                <div class="text-xs text-muted-color mt-1">No user records currently returned by GET /api/misc/users.</div>
               </td>
             </tr>
           </ng-template>
@@ -224,28 +220,28 @@ import { CreateUserRequest } from '../../models/api.models';
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="block text-xs font-semibold text-muted-color uppercase mb-1">First Name *</label>
-            <input pInputText [(ngModel)]="newUser.firstName" placeholder="Jane" class="w-full" />
+            <input pInputText [(ngModel)]="newUser.firstName" placeholder="First Name" class="w-full" />
           </div>
           <div>
             <label class="block text-xs font-semibold text-muted-color uppercase mb-1">Last Name *</label>
-            <input pInputText [(ngModel)]="newUser.lastName" placeholder="Smith" class="w-full" />
+            <input pInputText [(ngModel)]="newUser.lastName" placeholder="Last Name" class="w-full" />
           </div>
         </div>
 
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="block text-xs font-semibold text-muted-color uppercase mb-1">Email Address *</label>
-            <input pInputText type="email" [(ngModel)]="newUser.email" placeholder="jane.smith@freewheel.com" class="w-full" />
+            <input pInputText type="email" [(ngModel)]="newUser.email" placeholder="staff@example.com" class="w-full" />
           </div>
           <div>
             <label class="block text-xs font-semibold text-muted-color uppercase mb-1">Phone Number *</label>
-            <input pInputText [(ngModel)]="newUser.phoneNumber" placeholder="+1 (555) 999-8888" class="w-full" />
+            <input pInputText [(ngModel)]="newUser.phoneNumber" placeholder="+1 (555) 000-0000" class="w-full" />
           </div>
         </div>
 
         <div>
-          <label class="block text-xs font-semibold text-muted-color uppercase mb-1">Password</label>
-          <input pInputText type="password" [(ngModel)]="newUser.password" placeholder="Temporary password" class="w-full" />
+          <label class="block text-xs font-semibold text-muted-color uppercase mb-1">Password *</label>
+          <input pInputText type="password" [(ngModel)]="newUser.password" placeholder="At least 8 characters" class="w-full" />
         </div>
 
         <div>
@@ -281,11 +277,14 @@ import { CreateUserRequest } from '../../models/api.models';
   `
 })
 export class TechniciansListComponent implements OnInit {
-  protected dataService = inject(CycleDataService);
   protected userService = inject(UserService);
   protected miscService = inject(MiscService);
+  protected ticketService = inject(TicketService);
   protected authService = inject(AuthService);
   private notificationService = inject(AppNotificationService);
+
+  users = this.miscService.users;
+  tickets = this.ticketService.tickets;
 
   addUserDialogVisible = false;
   isSubmitting = false;
@@ -304,64 +303,86 @@ export class TechniciansListComponent implements OnInit {
   groupOptions: { label: string; value: string }[] = [];
 
   ngOnInit(): void {
+    this.loadStaff();
     this.loadLookups();
+  }
+
+  loadStaff(): void {
+    this.miscService.getUsers().subscribe();
+    this.ticketService.getTickets().subscribe();
   }
 
   private loadLookups(): void {
     this.miscService.getRoles().subscribe({
       next: (roles) => {
-        this.roleOptions = roles.map(r => ({ label: r.name, value: r.id }));
+        this.roleOptions = (roles || []).map(r => ({ label: r.name, value: r.id }));
         if (this.roleOptions.length > 0 && this.newUser.roleIds.length === 0) {
           this.newUser.roleIds = [this.roleOptions[0].value];
         }
       },
       error: () => {
-        this.roleOptions = [
-          { label: 'Admin', value: 'c90538a7-7be6-4443-8ce0-ebfe701fa001' },
-          { label: 'Employee', value: 'c90538a7-7be6-4443-8ce0-ebfe701fa002' },
-          { label: 'User', value: 'c90538a7-7be6-4443-8ce0-ebfe701fa003' }
-        ];
+        this.roleOptions = [];
       }
     });
 
     this.miscService.getGroups().subscribe({
       next: (groups) => {
-        this.groupOptions = groups.map(g => ({ label: g.name, value: g.id }));
+        this.groupOptions = (groups || []).map(g => ({ label: g.name, value: g.id }));
       },
-      error: () => {}
+      error: () => {
+        this.groupOptions = [];
+      }
     });
   }
 
-  get filteredTechnicians(): Technician[] {
-    return this.dataService.technicians();
+  getUserFullName(user: MiscUser): string {
+    const parts = [user.firstName, user.lastName].filter(Boolean);
+    return parts.length > 0 ? parts.join(' ') : (user.email || 'Staff Member');
   }
 
-  getCountByAvailability(avail: TechnicianAvailability): number {
-    return this.dataService.technicians().filter(t => t.availability === avail).length;
+  getUserInitials(user: MiscUser): string {
+    const first = user.firstName ? user.firstName.charAt(0).toUpperCase() : '';
+    const last = user.lastName ? user.lastName.charAt(0).toUpperCase() : '';
+    return first + last || (user.email ? user.email.charAt(0).toUpperCase() : 'S');
   }
 
-  getAvailabilitySeverity(avail: TechnicianAvailability): 'success' | 'info' | 'warn' | 'danger' | 'secondary' {
-    switch (avail) {
-      case 'Available': return 'success';
-      case 'On Job': return 'warn';
-      case 'On Break': return 'info';
-      case 'Off Duty': return 'secondary';
-      default: return 'info';
-    }
+  getActiveJobsForUser(userId: string): number {
+    return this.tickets().filter(t => {
+      if (t.assigneeId !== userId) return false;
+      const s = (t.status || '').toLowerCase();
+      return !s.includes('complete') && !s.includes('closed');
+    }).length;
   }
 
-  toggleAvailability(tech: Technician): void {
-    const next: TechnicianAvailability = tech.availability === 'Available' ? 'On Job' :
-                                         tech.availability === 'On Job' ? 'On Break' :
-                                         tech.availability === 'On Break' ? 'Available' : 'Available';
+  getCompletedJobsForUser(userId: string): number {
+    return this.tickets().filter(t => {
+      if (t.assigneeId !== userId) return false;
+      const s = (t.status || '').toLowerCase();
+      return s.includes('complete') || s.includes('closed');
+    }).length;
+  }
 
-    this.dataService.updateTechnicianStatus(tech.id, next);
-    tech.availability = next;
-    this.notificationService.showInfo(
-      'Status Updated',
-      `${tech.name} marked as "${next}".`
+  staffWithActiveJobsCount = computed(() => {
+    const staffIds = new Set(
+      this.tickets()
+        .filter(t => {
+          const s = (t.status || '').toLowerCase();
+          return !s.includes('complete') && !s.includes('closed') && !!t.assigneeId;
+        })
+        .map(t => t.assigneeId)
     );
-  }
+    return staffIds.size;
+  });
+
+  availableStaffCount = computed(() => {
+    const total = this.users().length;
+    const busy = this.staffWithActiveJobsCount();
+    return Math.max(0, total - busy);
+  });
+
+  totalAssignedTicketsCount = computed(() => {
+    return this.tickets().filter(t => !!t.assigneeId).length;
+  });
 
   openAddUserModal(): void {
     this.newUser = {
@@ -397,7 +418,7 @@ export class TechniciansListComponent implements OnInit {
     };
 
     this.userService.createUser(reqPayload).subscribe({
-      next: (res) => {
+      next: () => {
         this.isSubmitting = false;
         this.addUserDialogVisible = false;
 
@@ -407,7 +428,7 @@ export class TechniciansListComponent implements OnInit {
           `Staff member ${this.newUser.firstName} ${this.newUser.lastName} registered successfully on backend!`
         );
 
-        // Refresh user lookups
+        // Refresh user list
         this.miscService.getUsers().subscribe();
       },
       error: (err) => {

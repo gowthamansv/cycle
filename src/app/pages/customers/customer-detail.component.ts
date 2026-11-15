@@ -6,10 +6,9 @@ import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { CardModule } from 'primeng/card';
-import { CycleDataService } from '../../services/cycle-data.service';
 import { MiscService } from '../../services/misc.service';
-import { MiscCustomer } from '../../models/api.models';
-import { Customer, Bicycle, ServiceTicket, Appointment, PaymentRecord } from '../../models/cycle-management.models';
+import { TicketService } from '../../services/ticket.service';
+import { MiscCustomer, CustomerCycleLookup, TicketResponseDto } from '../../models/api.models';
 
 @Component({
   selector: 'app-customer-detail',
@@ -35,16 +34,15 @@ import { Customer, Bicycle, ServiceTicket, Appointment, PaymentRecord } from '..
             <div class="flex items-center gap-3">
               <h1 class="text-2xl font-bold text-surface-900 dark:text-surface-0">{{ customer.name }}</h1>
               <p-tag
-                [value]="customer.status"
-                [severity]="customer.status === 'VIP' ? 'warn' : customer.status === 'Active' ? 'success' : 'secondary'"
+                value="Verified Client"
+                severity="success"
               ></p-tag>
             </div>
             <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-color mt-1">
-              <span><i class="pi pi-id-card mr-1 text-[11px]"></i>{{ customer.id }}</span>
-              <span><i class="pi pi-phone mr-1 text-[11px]"></i>{{ customer.phone }}</span>
-              <span><i class="pi pi-envelope mr-1 text-[11px]"></i>{{ customer.email }}</span>
-              <span *ngIf="customer.companyName"><i class="pi pi-building mr-1 text-[11px]"></i>{{ customer.companyName }}</span>
-              <span><i class="pi pi-calendar mr-1 text-[11px]"></i>Member since {{ customer.joinDate }}</span>
+              <span><i class="pi pi-id-card mr-1 text-[11px]"></i>#{{ customer.id ? (customer.id.substring(0, 8) | uppercase) : 'N/A' }}</span>
+              <span *ngIf="customer.phoneNumber"><i class="pi pi-phone mr-1 text-[11px]"></i>{{ customer.phoneNumber }}</span>
+              <span *ngIf="customer.email"><i class="pi pi-envelope mr-1 text-[11px]"></i>{{ customer.email }}</span>
+              <span *ngIf="customer.address"><i class="pi pi-map-marker mr-1 text-[11px]"></i>{{ customer.address }}</span>
             </div>
           </div>
         </div>
@@ -63,6 +61,7 @@ import { Customer, Bicycle, ServiceTicket, Appointment, PaymentRecord } from '..
             icon="pi pi-wrench"
             routerLink="/services/new"
             size="small"
+            styleClass="bg-orange-500 hover:bg-orange-600 border-none text-white font-semibold"
           ></p-button>
         </div>
       </div>
@@ -77,20 +76,20 @@ import { Customer, Bicycle, ServiceTicket, Appointment, PaymentRecord } from '..
         </div>
         <div class="col-span-6 md:col-span-3">
           <div class="card p-4 mb-0 shadow-sm border border-surface-200 dark:border-surface-700">
+            <span class="text-xs text-muted-color uppercase font-semibold">Total Tickets</span>
+            <div class="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">{{ customerTickets.length }}</div>
+          </div>
+        </div>
+        <div class="col-span-6 md:col-span-3">
+          <div class="card p-4 mb-0 shadow-sm border border-surface-200 dark:border-surface-700">
             <span class="text-xs text-muted-color uppercase font-semibold">Active Jobs</span>
-            <div class="text-2xl font-bold text-orange-600 dark:text-orange-400 mt-1">{{ customer.activeServicesCount }}</div>
+            <div class="text-2xl font-bold text-orange-600 dark:text-orange-400 mt-1">{{ activeTicketsCount }}</div>
           </div>
         </div>
         <div class="col-span-6 md:col-span-3">
           <div class="card p-4 mb-0 shadow-sm border border-surface-200 dark:border-surface-700">
-            <span class="text-xs text-muted-color uppercase font-semibold">Total Spent</span>
-            <div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">\${{ totalSpent | number:'1.2-2' }}</div>
-          </div>
-        </div>
-        <div class="col-span-6 md:col-span-3">
-          <div class="card p-4 mb-0 shadow-sm border border-surface-200 dark:border-surface-700">
-            <span class="text-xs text-muted-color uppercase font-semibold">Last Service</span>
-            <div class="text-base font-bold text-surface-800 dark:text-surface-200 mt-2">{{ customer.lastServiceDate }}</div>
+            <span class="text-xs text-muted-color uppercase font-semibold">Completed Jobs</span>
+            <div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">{{ completedTicketsCount }}</div>
           </div>
         </div>
       </div>
@@ -100,7 +99,7 @@ import { Customer, Bicycle, ServiceTicket, Appointment, PaymentRecord } from '..
         <p-tabs value="0">
           <p-tablist>
             <p-tab value="0">
-              <i class="pi pi-user mr-2"></i> Profile & Address
+              <i class="pi pi-user mr-2"></i> Profile Details
             </p-tab>
             <p-tab value="1">
               <i class="pi pi-compass mr-2"></i> Bicycles ({{ customerBicycles.length }})
@@ -109,10 +108,10 @@ import { Customer, Bicycle, ServiceTicket, Appointment, PaymentRecord } from '..
               <i class="pi pi-wrench mr-2"></i> Service History ({{ customerTickets.length }})
             </p-tab>
             <p-tab value="3">
-              <i class="pi pi-calendar mr-2"></i> Appointments ({{ customerAppointments.length }})
+              <i class="pi pi-calendar mr-2"></i> Appointments (0)
             </p-tab>
             <p-tab value="4">
-              <i class="pi pi-credit-card mr-2"></i> Payment History ({{ customerPayments.length }})
+              <i class="pi pi-credit-card mr-2"></i> Payment History (0)
             </p-tab>
           </p-tablist>
 
@@ -124,47 +123,40 @@ import { Customer, Bicycle, ServiceTicket, Appointment, PaymentRecord } from '..
                   <h4 class="text-sm font-bold text-surface-900 dark:text-surface-0 uppercase tracking-wider">Contact & Account Details</h4>
                   <div class="p-4 rounded-lg bg-surface-50 dark:bg-surface-800/60 border border-surface-200 dark:border-surface-700 space-y-3 text-sm">
                     <div class="flex justify-between py-1 border-b border-surface-200/60 dark:border-surface-700/60">
+                      <span class="text-muted-color">Customer ID:</span>
+                      <span class="font-mono font-semibold">{{ customer.id }}</span>
+                    </div>
+                    <div class="flex justify-between py-1 border-b border-surface-200/60 dark:border-surface-700/60">
                       <span class="text-muted-color">Full Name:</span>
                       <span class="font-semibold text-surface-900 dark:text-surface-0">{{ customer.name }}</span>
                     </div>
                     <div class="flex justify-between py-1 border-b border-surface-200/60 dark:border-surface-700/60">
                       <span class="text-muted-color">Primary Phone:</span>
-                      <span class="font-mono">{{ customer.phone }}</span>
+                      <span class="font-mono">{{ customer.phoneNumber || '—' }}</span>
                     </div>
                     <div class="flex justify-between py-1 border-b border-surface-200/60 dark:border-surface-700/60">
                       <span class="text-muted-color">Email:</span>
-                      <span>{{ customer.email }}</span>
-                    </div>
-                    <div class="flex justify-between py-1 border-b border-surface-200/60 dark:border-surface-700/60">
-                      <span class="text-muted-color">Company / Team:</span>
-                      <span>{{ customer.companyName || 'None' }}</span>
+                      <span>{{ customer.email || '—' }}</span>
                     </div>
                     <div class="flex justify-between py-1">
-                      <span class="text-muted-color">Member Status:</span>
-                      <span class="font-semibold">{{ customer.status }}</span>
+                      <span class="text-muted-color">Address:</span>
+                      <span>{{ customer.address || '—' }}</span>
                     </div>
                   </div>
                 </div>
 
                 <div class="col-span-12 md:col-span-6 space-y-4">
-                  <h4 class="text-sm font-bold text-surface-900 dark:text-surface-0 uppercase tracking-wider">Location & Notes</h4>
-                  <div class="p-4 rounded-lg bg-surface-50 dark:bg-surface-800/60 border border-surface-200 dark:border-surface-700 space-y-3 text-sm">
-                    <div>
-                      <span class="text-xs text-muted-color uppercase block mb-1">Service Address</span>
-                      <p class="font-medium text-surface-800 dark:text-surface-200">{{ customer.address || '742 Evergreen Terrace, Portland, OR 97201' }}</p>
-                    </div>
-                    <div class="pt-2">
-                      <span class="text-xs text-muted-color uppercase block mb-1">Rider Notes & Setup Preferences</span>
-                      <p class="text-xs text-surface-700 dark:text-surface-300 italic p-3 rounded bg-surface-100 dark:bg-surface-800">
-                        {{ customer.notes || 'No special notes logged for this customer.' }}
-                      </p>
-                    </div>
+                  <h4 class="text-sm font-bold text-surface-900 dark:text-surface-0 uppercase tracking-wider">API Integration Info</h4>
+                  <div class="p-4 rounded-lg bg-surface-50 dark:bg-surface-800/60 border border-surface-200 dark:border-surface-700 space-y-2 text-xs text-muted-color">
+                    <p>Customer data loaded live from backend endpoint <code class="font-mono bg-surface-200 dark:bg-surface-700 px-1 py-0.5 rounded">/api/misc/customers</code>.</p>
+                    <p>Bicycles queried via <code class="font-mono bg-surface-200 dark:bg-surface-700 px-1 py-0.5 rounded">/api/misc/customers/&#123;id&#125;/cycles</code>.</p>
+                    <p>Service tickets matched from <code class="font-mono bg-surface-200 dark:bg-surface-700 px-1 py-0.5 rounded">/api/tickets</code>.</p>
                   </div>
                 </div>
               </div>
             </p-tabpanel>
 
-            <!-- Tab 1: Bicycle List -->
+            <!-- Tab 1: Bicycles -->
             <p-tabpanel value="1">
               <div class="pt-4">
                 <div class="flex justify-between items-center mb-4">
@@ -172,27 +164,34 @@ import { Customer, Bicycle, ServiceTicket, Appointment, PaymentRecord } from '..
                   <p-button label="+ Register Bicycle" icon="pi pi-plus" size="small" routerLink="/bicycles"></p-button>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div *ngIf="customerBicycles.length > 0; else noBicycles" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div *ngFor="let bike of customerBicycles" class="p-4 rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/50 hover:border-orange-400 transition-colors">
                     <div class="flex justify-between items-start mb-2">
                       <div>
-                        <h5 class="text-base font-bold text-surface-900 dark:text-surface-0">{{ bike.brand }} {{ bike.model }}</h5>
-                        <span class="text-xs px-2 py-0.5 rounded bg-surface-200 dark:bg-surface-700 font-medium">{{ bike.type }}</span>
+                        <h5 class="text-base font-bold text-surface-900 dark:text-surface-0">{{ bike.brand || '' }} {{ bike.model || bike.cycleModel || 'Bicycle' }}</h5>
+                        <span class="text-xs px-2 py-0.5 rounded bg-surface-200 dark:bg-surface-700 font-medium">{{ bike.bicycleType || bike.type || 'Standard' }}</span>
                       </div>
-                      <p-tag [value]="bike.status" [severity]="bike.status === 'Good' ? 'success' : bike.status === 'In Service' ? 'warn' : 'info'"></p-tag>
                     </div>
 
                     <div class="text-xs space-y-1 text-muted-color mt-3">
-                      <div>Serial: <strong class="text-surface-800 dark:text-surface-200 font-mono">{{ bike.serialNumber }}</strong></div>
-                      <div>Gear System: <strong class="text-surface-800 dark:text-surface-200">{{ bike.gearSystem || 'Shimano 105' }}</strong></div>
-                      <div>Last Serviced: <strong class="text-surface-800 dark:text-surface-200">{{ bike.lastServiceDate }}</strong></div>
+                      <div>Serial Number: <strong class="text-surface-800 dark:text-surface-200 font-mono">{{ bike.serialNumber || 'N/A' }}</strong></div>
+                      <div *ngIf="bike.frameNumber">Frame Number: <strong class="text-surface-800 dark:text-surface-200 font-mono">{{ bike.frameNumber }}</strong></div>
+                      <div *ngIf="bike.drivetrain || bike.gearSystem">Drivetrain: <strong class="text-surface-800 dark:text-surface-200">{{ bike.drivetrain || bike.gearSystem }}</strong></div>
+                      <div *ngIf="bike.brakeSystem || bike.brakeType">Brake Type: <strong class="text-surface-800 dark:text-surface-200">{{ bike.brakeSystem || bike.brakeType }}</strong></div>
                     </div>
 
                     <div class="mt-4 pt-3 border-t border-surface-200 dark:border-surface-700 flex justify-end">
-                      <p-button label="View Bicycle Details" [text]="true" size="small" [routerLink]="['/bicycles', bike.id]"></p-button>
+                      <p-button label="View Bicycle Details" [text]="true" size="small" [routerLink]="['/bicycles', bike.cycleId || bike.id]"></p-button>
                     </div>
                   </div>
                 </div>
+
+                <ng-template #noBicycles>
+                  <div class="text-center p-8 text-muted-color">
+                    <i class="pi pi-compass text-3xl mb-2 block"></i>
+                    <div>No bicycles registered for this customer yet.</div>
+                  </div>
+                </ng-template>
               </div>
             </p-tabpanel>
 
@@ -204,26 +203,24 @@ import { Customer, Bicycle, ServiceTicket, Appointment, PaymentRecord } from '..
                     <tr>
                       <th>Ticket ID</th>
                       <th>Bicycle</th>
-                      <th>Category</th>
-                      <th>Description</th>
+                      <th>Service / Scope</th>
                       <th>Technician</th>
                       <th>Status</th>
-                      <th>Date</th>
+                      <th>Created</th>
                     </tr>
                   </ng-template>
                   <ng-template #body let-t>
                     <tr>
-                      <td><span class="font-mono text-xs font-bold text-primary">{{ t.id }}</span></td>
-                      <td>{{ t.cycleModel }}</td>
-                      <td>{{ t.category || 'General' }}</td>
-                      <td><span class="text-xs truncate max-w-[200px] block">{{ t.description }}</span></td>
-                      <td>{{ t.assigneeName }}</td>
+                      <td><span class="font-mono text-xs font-bold text-primary">#{{ t.id ? (t.id.substring(0, 8) | uppercase) : 'N/A' }}</span></td>
+                      <td>{{ t.cycleModel || 'Bicycle' }}</td>
+                      <td><span class="text-xs truncate max-w-[200px] block">{{ t.udF6 || t.description || 'General Service' }}</span></td>
+                      <td>{{ t.assigneeName || 'Unassigned' }}</td>
                       <td><p-tag [value]="t.status" [severity]="t.status === 'Completed' ? 'success' : 'warn'"></p-tag></td>
-                      <td><span class="text-xs text-muted-color">{{ t.createdAt }}</span></td>
+                      <td><span class="text-xs text-muted-color">{{ t.createdAt | date:'short' }}</span></td>
                     </tr>
                   </ng-template>
                   <ng-template #emptymessage>
-                    <tr><td colspan="7" class="text-center p-6 text-muted-color">No previous service tickets logged.</td></tr>
+                    <tr><td colspan="6" class="text-center p-6 text-muted-color">No previous service tickets logged for this customer.</td></tr>
                   </ng-template>
                 </p-table>
               </div>
@@ -231,63 +228,23 @@ import { Customer, Bicycle, ServiceTicket, Appointment, PaymentRecord } from '..
 
             <!-- Tab 3: Appointments -->
             <p-tabpanel value="3">
-              <div class="pt-4">
-                <p-table [value]="customerAppointments" responsiveLayout="scroll" styleClass="p-datatable-sm">
-                  <ng-template #header>
-                    <tr>
-                      <th>ID</th>
-                      <th>Bicycle</th>
-                      <th>Service</th>
-                      <th>Date & Time</th>
-                      <th>Technician</th>
-                      <th>Status</th>
-                    </tr>
-                  </ng-template>
-                  <ng-template #body let-a>
-                    <tr>
-                      <td><span class="font-mono text-xs font-bold text-primary">{{ a.id }}</span></td>
-                      <td>{{ a.cycleModel }}</td>
-                      <td>{{ a.serviceType }}</td>
-                      <td><span class="font-mono text-xs">{{ a.date }} at {{ a.time }}</span></td>
-                      <td>{{ a.technicianName }}</td>
-                      <td><p-tag [value]="a.status" [severity]="a.status === 'Completed' ? 'success' : 'info'"></p-tag></td>
-                    </tr>
-                  </ng-template>
-                  <ng-template #emptymessage>
-                    <tr><td colspan="6" class="text-center p-6 text-muted-color">No appointment records found.</td></tr>
-                  </ng-template>
-                </p-table>
+              <div class="pt-4 text-center p-8 text-muted-color">
+                <i class="pi pi-calendar-times text-4xl mb-2 block text-surface-400"></i>
+                <div class="font-medium text-surface-700 dark:text-surface-300">No Appointments Available</div>
+                <div class="text-xs text-muted-color mt-1">
+                  The backend service currently does not provide an appointments API endpoint (GET /api/appointments).
+                </div>
               </div>
             </p-tabpanel>
 
             <!-- Tab 4: Payments -->
             <p-tabpanel value="4">
-              <div class="pt-4">
-                <p-table [value]="customerPayments" responsiveLayout="scroll" styleClass="p-datatable-sm">
-                  <ng-template #header>
-                    <tr>
-                      <th>Invoice #</th>
-                      <th>Service Description</th>
-                      <th>Amount</th>
-                      <th>Payment Method</th>
-                      <th>Status</th>
-                      <th>Date</th>
-                    </tr>
-                  </ng-template>
-                  <ng-template #body let-p>
-                    <tr>
-                      <td><span class="font-mono text-xs font-bold text-primary">{{ p.invoiceNumber }}</span></td>
-                      <td>{{ p.serviceName }}</td>
-                      <td><span class="font-bold text-emerald-600">\${{ p.amount | number:'1.2-2' }}</span></td>
-                      <td>{{ p.paymentMethod }}</td>
-                      <td><p-tag [value]="p.status" [severity]="p.status === 'Paid' ? 'success' : 'warn'"></p-tag></td>
-                      <td><span class="text-xs text-muted-color">{{ p.date }}</span></td>
-                    </tr>
-                  </ng-template>
-                  <ng-template #emptymessage>
-                    <tr><td colspan="6" class="text-center p-6 text-muted-color">No payment records found.</td></tr>
-                  </ng-template>
-                </p-table>
+              <div class="pt-4 text-center p-8 text-muted-color">
+                <i class="pi pi-credit-card text-4xl mb-2 block text-surface-400"></i>
+                <div class="font-medium text-surface-700 dark:text-surface-300">No Payment Records Available</div>
+                <div class="text-xs text-muted-color mt-1">
+                  The backend service currently does not provide an invoice or payments API endpoint (GET /api/payments).
+                </div>
               </div>
             </p-tabpanel>
           </p-tabpanels>
@@ -307,15 +264,12 @@ import { Customer, Bicycle, ServiceTicket, Appointment, PaymentRecord } from '..
 })
 export class CustomerDetailComponent implements OnInit {
   private route = inject(ActivatedRoute);
-  private dataService = inject(CycleDataService);
-
   protected miscService = inject(MiscService);
+  protected ticketService = inject(TicketService);
 
-  customer: Customer | null = null;
-  customerBicycles: Bicycle[] = [];
-  customerTickets: ServiceTicket[] = [];
-  customerAppointments: Appointment[] = [];
-  customerPayments: PaymentRecord[] = [];
+  customer: MiscCustomer | null = null;
+  customerBicycles: CustomerCycleLookup[] = [];
+  customerTickets: TicketResponseDto[] = [];
 
   ngOnInit(): void {
     this.route.paramMap.subscribe(params => {
@@ -327,37 +281,55 @@ export class CustomerDetailComponent implements OnInit {
   }
 
   loadCustomer(id: string): void {
-    const miscCust = this.miscService.customers().find(c => c.id === id);
-    const cust = this.dataService.customers().find(c => c.id === id);
-    if (miscCust || cust) {
-      this.customer = {
-        id: miscCust?.id || cust?.id || id,
-        name: miscCust?.name || cust?.name || 'Customer',
-        phone: miscCust?.phoneNumber || cust?.phone || '',
-        email: miscCust?.email || cust?.email || '',
-        address: miscCust?.address || cust?.address || '',
-        status: cust?.status || 'Active',
-        companyName: cust?.companyName || '',
-        joinDate: cust?.joinDate || '2026',
-        bicyclesCount: cust?.bicyclesCount || 0,
-        activeServicesCount: cust?.activeServicesCount || 0,
-        lastServiceDate: cust?.lastServiceDate || 'N/A',
-        bicycles: cust?.bicycles || []
-      };
-      this.customerBicycles = this.dataService.bicycles().filter(b => b.customerId === id);
-      this.customerTickets = this.dataService.tickets().filter(t => t.customerId === id);
-      this.customerAppointments = this.dataService.appointments().filter(a => a.customerId === id);
-      this.customerPayments = this.dataService.payments().filter(p => p.customerId === id);
+    // 1. Check if customers list is loaded
+    const found = this.miscService.customers().find(c => c.id === id);
+    if (found) {
+      this.customer = found;
+    } else {
+      this.miscService.getCustomers().subscribe({
+        next: (custs) => {
+          this.customer = (custs || []).find(c => c.id === id) || null;
+        }
+      });
     }
+
+    // 2. Load bicycles for this customer
+    this.miscService.getCustomerCycles(id).subscribe({
+      next: (bikes) => {
+        this.customerBicycles = bikes || [];
+      },
+      error: () => {
+        this.customerBicycles = [];
+      }
+    });
+
+    // 3. Load tickets for this customer
+    this.ticketService.getTickets().subscribe({
+      next: (tickets) => {
+        this.customerTickets = (tickets || []).filter(t => t.customerId === id);
+      },
+      error: () => {
+        this.customerTickets = [];
+      }
+    });
   }
 
-  get totalSpent(): number {
-    return this.customerPayments
-      .filter(p => p.status === 'Paid')
-      .reduce((sum, p) => sum + p.amount, 0);
+  get activeTicketsCount(): number {
+    return this.customerTickets.filter(t => {
+      const s = (t.status || '').toLowerCase();
+      return !s.includes('complete') && !s.includes('closed');
+    }).length;
   }
 
-  getInitials(name: string): string {
+  get completedTicketsCount(): number {
+    return this.customerTickets.filter(t => {
+      const s = (t.status || '').toLowerCase();
+      return s.includes('complete') || s.includes('closed');
+    }).length;
+  }
+
+  getInitials(name?: string | null): string {
+    if (!name) return 'C';
     return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
   }
 }

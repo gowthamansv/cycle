@@ -599,85 +599,8 @@ export class FreewheelCatalogService {
     }
   ]);
 
-  // Sample Digital Passports for Customer Bicycles
-  private passportsSignal = signal<DigitalBicyclePassport[]>([
-    {
-      id: 'PASSPORT-8912P',
-      bikeId: 'BIKE-001',
-      serialNumber: 'WTU230C8912P',
-      frameNumber: 'FRM-TRK-98124',
-      brand: 'Trek',
-      model: 'Domane SL 6 (2023)',
-      bikeType: 'Road',
-      ownerName: 'Marcus Vance',
-      ownerPhone: '+1 (555) 234-8901',
-      overallHealthScore: 94,
-      raceReadyStatus: 'PASS',
-      lastInspectionDate: '2026-09-20',
-      inspectorName: 'Alex Rivera (Master Tech)',
-      verifiedTorqueSpecs: true,
-      ultrasonicDrivetrainCertified: true,
-      notes: 'Road-ready. Drivetrain clean and waxing verified. Chain elongation at 0.25% (excellent condition).',
-      inspectionItems: [
-        { componentName: 'OCLV Carbon Frame & Fork', category: 'Frame', status: 'GOOD', measuredWear: '0% wear', technicianNotes: 'No cracks or delamination found.' },
-        { componentName: 'Bontrager Paradigm Disc Wheels', category: 'Wheels', status: 'GOOD', measuredWear: '<0.1mm lateral', technicianNotes: 'Tension balanced.' },
-        { componentName: 'Shimano 105 Di2 Drivetrain', category: 'Drivetrain', status: 'GOOD', measuredWear: '0.25% chain elongation', technicianNotes: 'Ultrasonic wax applied.' },
-        { componentName: 'Shimano 105 Hydraulic Brakes', category: 'Brakes', status: 'GOOD', measuredWear: '75% pad life remaining', technicianNotes: 'Bleed fresh.' },
-        { componentName: 'T47 Bottom Bracket Bearings', category: 'Bearings', status: 'GOOD', measuredWear: 'Zero play', technicianNotes: 'Smooth rotation.' }
-      ]
-    },
-    {
-      id: 'PASSPORT-8920K',
-      bikeId: 'BIKE-003',
-      serialNumber: 'WSBC60108920K',
-      frameNumber: 'FRM-SPZ-66710',
-      brand: 'Specialized',
-      model: 'Stumpjumper EVO',
-      bikeType: 'Mountain',
-      ownerName: 'Elena Rostova',
-      ownerPhone: '+1 (555) 345-6712',
-      overallHealthScore: 78,
-      raceReadyStatus: 'CONDITIONAL',
-      lastInspectionDate: '2026-09-20',
-      inspectorName: 'David Chen (Suspension Specialist)',
-      verifiedTorqueSpecs: true,
-      ultrasonicDrivetrainCertified: false,
-      notes: 'Lower leg fork service recommended due to 60+ trail hours. Chain showing 0.6% stretch.',
-      inspectionItems: [
-        { componentName: 'FACT 11m Carbon Chassis', category: 'Frame', status: 'GOOD', measuredWear: 'Surface clear', technicianNotes: 'Minor cosmetic downtube scratch.' },
-        { componentName: 'Fox Float 36 Performance Elite Fork', category: 'Fork', status: 'ATTENTION_REQUIRED', measuredWear: '58 hours logged', technicianNotes: 'Recommend 50-hour lower-leg service.', actionRequired: 'Schedule Lower-Leg Service' },
-        { componentName: 'Fox Float X Rear Shock', category: 'Shock', status: 'GOOD', measuredWear: 'Normal damping', technicianNotes: 'Sag set to 28%.' },
-        { componentName: 'SRAM GX Eagle AXS Drivetrain', category: 'Drivetrain', status: 'ATTENTION_REQUIRED', measuredWear: '0.60% chain stretch', technicianNotes: 'Replace chain soon to save cassette.', actionRequired: 'Replace SRAM Eagle Chain' },
-        { componentName: 'SRAM Code RS 4-Piston Brakes', category: 'Brakes', status: 'GOOD', measuredWear: '65% pad life', technicianNotes: 'Bite point firm.' },
-        { componentName: 'Suspension Linkage Bearings', category: 'Bearings', status: 'GOOD', measuredWear: 'Smooth', technicianNotes: 'Pivots torqued to 15Nm.' }
-      ]
-    },
-    {
-      id: 'PASSPORT-84711M',
-      bikeId: 'BIKE-007',
-      serialNumber: 'SPE90284711M',
-      frameNumber: 'FRM-SPZ-99120',
-      brand: 'Specialized',
-      model: 'Turbo Vado 4.0 E-Bike',
-      bikeType: 'Electric',
-      ownerName: 'Liam O’Connor',
-      ownerPhone: '+1 (555) 678-9012',
-      overallHealthScore: 88,
-      raceReadyStatus: 'NOT_APPLICABLE',
-      lastInspectionDate: '2026-09-19',
-      inspectorName: 'David Chen (E-Bike Specialist)',
-      verifiedTorqueSpecs: true,
-      ultrasonicDrivetrainCertified: true,
-      notes: 'Brose motor firmware updated to v7.4. Battery health tested at 96% State of Health.',
-      inspectionItems: [
-        { componentName: 'E5 Premium Aluminum Frame', category: 'Frame', status: 'GOOD', measuredWear: '0% wear', technicianNotes: 'Solid integrity.' },
-        { componentName: 'Specialized 2.0 Motor & 710Wh Battery', category: 'Electrical', status: 'GOOD', measuredWear: '96% SoH (38 cycles)', technicianNotes: 'Firmware updated.' },
-        { componentName: 'SRAM NX 11-Speed Drivetrain', category: 'Drivetrain', status: 'GOOD', measuredWear: '0.35% chain wear', technicianNotes: 'E-bike rated chain in good shape.' },
-        { componentName: 'SRAM Level HD Brakes', category: 'Brakes', status: 'GOOD', measuredWear: '80% pad thickness', technicianNotes: 'Sintered pads installed.' },
-        { componentName: '700x47c Pathfinder Sport Tyres', category: 'Wheels', status: 'GOOD', measuredWear: 'Tread deep', technicianNotes: 'Puncture protection intact.' }
-      ]
-    }
-  ]);
+  // Digital Passports for Customer Bicycles - Initialized empty (No mock data)
+  private passportsSignal = signal<DigitalBicyclePassport[]>([]);
 
   // Getters & Computed Signals
   readonly services = computed(() => this.servicesSignal());

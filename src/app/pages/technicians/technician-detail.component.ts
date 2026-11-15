@@ -4,10 +4,10 @@ import { ActivatedRoute, RouterModule } from '@angular/router';
 import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
-import { ProgressBarModule } from 'primeng/progressbar';
 import { CardModule } from 'primeng/card';
-import { CycleDataService } from '../../services/cycle-data.service';
-import { Technician, ServiceJob } from '../../models/cycle-management.models';
+import { MiscService } from '../../services/misc.service';
+import { TicketService } from '../../services/ticket.service';
+import { MiscUser, TicketResponseDto } from '../../models/api.models';
 
 @Component({
   selector: 'app-technician-detail',
@@ -18,26 +18,25 @@ import { Technician, ServiceJob } from '../../models/cycle-management.models';
     TableModule,
     ButtonModule,
     TagModule,
-    ProgressBarModule,
     CardModule
   ],
   template: `
-    <div *ngIf="technician; else notFound" class="flex flex-col gap-6">
+    <div *ngIf="user; else notFound" class="flex flex-col gap-6">
       <!-- Profile Header -->
       <div class="bg-surface-0 dark:bg-surface-900 p-6 rounded-xl border border-surface-200 dark:border-surface-700 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div class="flex items-start gap-4">
-          <img [src]="technician.avatar" [alt]="technician.name" class="w-16 h-16 rounded-2xl border-2 border-orange-500/30 object-cover shadow-sm" />
+          <div class="w-16 h-16 rounded-2xl bg-orange-500/10 text-orange-600 dark:text-orange-400 flex items-center justify-center font-bold text-2xl border border-orange-500/20">
+            {{ getUserInitials(user) }}
+          </div>
           <div>
             <div class="flex items-center gap-3">
-              <h1 class="text-2xl font-bold text-surface-900 dark:text-surface-0">{{ technician.name }}</h1>
-              <p-tag [value]="technician.availability" [severity]="technician.availability === 'Available' ? 'success' : 'warn'"></p-tag>
+              <h1 class="text-2xl font-bold text-surface-900 dark:text-surface-0">{{ getUserFullName(user) }}</h1>
+              <p-tag value="Active Staff" severity="success"></p-tag>
             </div>
-            <div class="text-xs text-orange-600 dark:text-orange-400 font-semibold mt-0.5">{{ technician.specialization }}</div>
+            <div class="text-xs text-orange-600 dark:text-orange-400 font-semibold mt-0.5">Workshop Staff User</div>
             <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-color mt-1">
-              <span><i class="pi pi-id-card mr-1 text-[11px]"></i>ID: {{ technician.id }}</span>
-              <span><i class="pi pi-phone mr-1 text-[11px]"></i>{{ technician.phone }}</span>
-              <span><i class="pi pi-envelope mr-1 text-[11px]"></i>{{ technician.email }}</span>
-              <span><i class="pi pi-verified mr-1 text-[11px]"></i>{{ technician.certification }}</span>
+              <span><i class="pi pi-id-card mr-1 text-[11px]"></i>ID: #{{ user.id ? (user.id.substring(0, 8) | uppercase) : 'N/A' }}</span>
+              <span *ngIf="user.email"><i class="pi pi-envelope mr-1 text-[11px]"></i>{{ user.email }}</span>
             </div>
           </div>
         </div>
@@ -51,36 +50,36 @@ import { Technician, ServiceJob } from '../../models/cycle-management.models';
             routerLink="/technicians"
             size="small"
           ></p-button>
+          <p-button
+            label="+ Assign Service"
+            icon="pi pi-wrench"
+            routerLink="/services/new"
+            size="small"
+            styleClass="bg-orange-500 hover:bg-orange-600 border-none text-white font-semibold"
+          ></p-button>
         </div>
       </div>
 
       <!-- Performance Metrics Grid -->
       <div class="grid grid-cols-12 gap-4">
-        <div class="col-span-6 md:col-span-3">
+        <div class="col-span-6 md:col-span-4">
           <div class="card p-4 mb-0 shadow-sm border border-surface-200 dark:border-surface-700">
             <span class="text-xs text-muted-color uppercase font-semibold">Active Queue</span>
-            <div class="text-2xl font-bold text-orange-600 dark:text-orange-400 mt-1">{{ assignedJobs.length }} Jobs</div>
+            <div class="text-2xl font-bold text-orange-600 dark:text-orange-400 mt-1">{{ activeJobsCount }} Tickets</div>
           </div>
         </div>
 
-        <div class="col-span-6 md:col-span-3">
+        <div class="col-span-6 md:col-span-4">
           <div class="card p-4 mb-0 shadow-sm border border-surface-200 dark:border-surface-700">
-            <span class="text-xs text-muted-color uppercase font-semibold">Lifetime Repaired</span>
-            <div class="text-2xl font-bold text-surface-900 dark:text-surface-0 mt-1">{{ technician.completedJobsCount }} Bikes</div>
+            <span class="text-xs text-muted-color uppercase font-semibold">Completed Services</span>
+            <div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">{{ completedJobsCount }} Tickets</div>
           </div>
         </div>
 
-        <div class="col-span-6 md:col-span-3">
+        <div class="col-span-12 md:col-span-4">
           <div class="card p-4 mb-0 shadow-sm border border-surface-200 dark:border-surface-700">
-            <span class="text-xs text-muted-color uppercase font-semibold">Customer Rating</span>
-            <div class="text-2xl font-bold text-purple-600 dark:text-purple-400 mt-1">{{ technician.rating }} ★</div>
-          </div>
-        </div>
-
-        <div class="col-span-6 md:col-span-3">
-          <div class="card p-4 mb-0 shadow-sm border border-surface-200 dark:border-surface-700">
-            <span class="text-xs text-muted-color uppercase font-semibold">Experience</span>
-            <div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">{{ technician.experienceYears }} Years</div>
+            <span class="text-xs text-muted-color uppercase font-semibold">Total Assigned</span>
+            <div class="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">{{ assignedJobs.length }} Tickets</div>
           </div>
         </div>
       </div>
@@ -91,57 +90,60 @@ import { Technician, ServiceJob } from '../../models/cycle-management.models';
           <div>
             <h3 class="text-base font-bold text-surface-900 dark:text-surface-0 uppercase tracking-wider flex items-center gap-2">
               <i class="pi pi-wrench text-orange-500"></i>
-              Current Workshop Queue & Assigned Tasks
+              Current Assigned Tickets Queue
             </h3>
-            <p class="text-xs text-muted-color">Bicycles currently assigned to {{ technician.name }}</p>
+            <p class="text-xs text-muted-color">Live tickets assigned to {{ getUserFullName(user) }} from GET /api/tickets</p>
           </div>
         </div>
 
         <p-table [value]="assignedJobs" responsiveLayout="scroll" styleClass="p-datatable-sm">
           <ng-template #header>
             <tr>
-              <th>Job ID</th>
+              <th>Ticket ID</th>
               <th>Customer</th>
-              <th>Bicycle Model</th>
-              <th>Service Required</th>
-              <th>Scheduled</th>
-              <th>Progress</th>
+              <th>Bicycle</th>
+              <th>Service Scope</th>
+              <th>Priority</th>
               <th>Status</th>
+              <th>Created</th>
             </tr>
           </ng-template>
-
-          <ng-template #body let-job>
+          <ng-template #body let-t>
             <tr>
-              <td><span class="font-mono text-xs font-bold text-primary">{{ job.id }}</span></td>
               <td>
-                <div class="font-semibold text-xs text-surface-900 dark:text-surface-0">{{ job.customerName }}</div>
-                <div class="text-[11px] text-muted-color">{{ job.customerPhone }}</div>
+                <span class="font-mono text-xs font-bold text-primary">
+                  #{{ t.id ? (t.id.substring(0, 8) | uppercase) : 'TCK' }}
+                </span>
               </td>
               <td>
-                <div class="text-xs font-medium text-surface-800 dark:text-surface-200">{{ job.bicycleModel }}</div>
+                <div class="font-semibold text-sm text-surface-900 dark:text-surface-0">{{ t.customerName || 'Customer' }}</div>
+                <div class="text-xs text-muted-color">{{ t.contactPhone || '—' }}</div>
               </td>
               <td>
-                <div class="text-xs">{{ job.serviceName }}</div>
+                <div class="text-xs font-medium text-surface-800 dark:text-surface-200">{{ t.cycleModel || 'Bicycle' }}</div>
+                <div *ngIf="t.serialNumber" class="text-[11px] text-muted-color font-mono">{{ t.serialNumber }}</div>
               </td>
               <td>
-                <span class="text-xs font-mono text-muted-color">{{ job.scheduledTime }}</span>
-              </td>
-              <td style="min-width: 120px">
-                <div class="flex items-center gap-2">
-                  <div class="flex-1">
-                    <p-progressbar [value]="job.progress" [showValue]="false" [style]="{ height: '5px' }"></p-progressbar>
-                  </div>
-                  <span class="text-xs font-mono">{{ job.progress }}%</span>
-                </div>
+                <div class="text-xs truncate max-w-[200px]">{{ t.udF6 || t.description || 'General Service' }}</div>
               </td>
               <td>
-                <p-tag [value]="job.status" [severity]="job.status === 'Completed' ? 'success' : job.status === 'In Progress' ? 'warn' : 'info'"></p-tag>
+                <p-tag [value]="t.priority || 'Normal'" severity="info"></p-tag>
+              </td>
+              <td>
+                <p-tag [value]="t.status || 'Active'" [severity]="t.status === 'Completed' ? 'success' : 'warn'"></p-tag>
+              </td>
+              <td>
+                <span class="text-xs text-muted-color font-mono">{{ t.createdAt | date:'short' }}</span>
               </td>
             </tr>
           </ng-template>
-
           <ng-template #emptymessage>
-            <tr><td colspan="7" class="text-center p-6 text-muted-color">No active jobs currently assigned to this technician.</td></tr>
+            <tr>
+              <td colspan="7" class="text-center p-8 text-muted-color">
+                <i class="pi pi-inbox text-3xl mb-2 block"></i>
+                No service tickets currently assigned to this staff member.
+              </td>
+            </tr>
           </ng-template>
         </p-table>
       </div>
@@ -150,8 +152,8 @@ import { Technician, ServiceJob } from '../../models/cycle-management.models';
     <ng-template #notFound>
       <div class="card text-center p-12">
         <i class="pi pi-user-times text-5xl text-surface-400 mb-3"></i>
-        <h3 class="text-lg font-bold text-surface-900 dark:text-surface-0">Technician Not Found</h3>
-        <p class="text-sm text-muted-color mb-4">The technician record could not be found.</p>
+        <h3 class="text-lg font-bold text-surface-900 dark:text-surface-0">Staff Profile Not Found</h3>
+        <p class="text-sm text-muted-color mb-4">The technician or staff record could not be found.</p>
         <p-button label="Back to Technicians" icon="pi pi-arrow-left" routerLink="/technicians"></p-button>
       </div>
     </ng-template>
@@ -159,20 +161,65 @@ import { Technician, ServiceJob } from '../../models/cycle-management.models';
 })
 export class TechnicianDetailComponent implements OnInit {
   private route = inject(ActivatedRoute);
-  private dataService = inject(CycleDataService);
+  private miscService = inject(MiscService);
+  private ticketService = inject(TicketService);
 
-  technician: Technician | null = null;
-  assignedJobs: ServiceJob[] = [];
+  user: MiscUser | null = null;
+  assignedJobs: TicketResponseDto[] = [];
 
   ngOnInit(): void {
     this.route.paramMap.subscribe(params => {
       const id = params.get('id');
       if (id) {
-        this.technician = this.dataService.technicians().find(t => t.id === id) || null;
-        if (this.technician) {
-          this.assignedJobs = this.dataService.serviceJobs().filter(j => j.technicianId === id || j.technicianName === this.technician?.name);
-        }
+        this.loadUser(id);
       }
     });
+  }
+
+  loadUser(id: string): void {
+    const existing = this.miscService.users().find(u => u.id === id);
+    if (existing) {
+      this.user = existing;
+    } else {
+      this.miscService.getUsers().subscribe({
+        next: (users) => {
+          this.user = (users || []).find(u => u.id === id) || null;
+        }
+      });
+    }
+
+    this.ticketService.getTickets().subscribe({
+      next: (tickets) => {
+        this.assignedJobs = (tickets || []).filter(t => t.assigneeId === id);
+      },
+      error: () => {
+        this.assignedJobs = [];
+      }
+    });
+  }
+
+  get activeJobsCount(): number {
+    return this.assignedJobs.filter(t => {
+      const s = (t.status || '').toLowerCase();
+      return !s.includes('complete') && !s.includes('closed');
+    }).length;
+  }
+
+  get completedJobsCount(): number {
+    return this.assignedJobs.filter(t => {
+      const s = (t.status || '').toLowerCase();
+      return s.includes('complete') || s.includes('closed');
+    }).length;
+  }
+
+  getUserFullName(user: MiscUser): string {
+    const parts = [user.firstName, user.lastName].filter(Boolean);
+    return parts.length > 0 ? parts.join(' ') : (user.email || 'Staff Member');
+  }
+
+  getUserInitials(user: MiscUser): string {
+    const first = user.firstName ? user.firstName.charAt(0).toUpperCase() : '';
+    const last = user.lastName ? user.lastName.charAt(0).toUpperCase() : '';
+    return first + last || (user.email ? user.email.charAt(0).toUpperCase() : 'S');
   }
 }
