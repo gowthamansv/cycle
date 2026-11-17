@@ -353,6 +353,16 @@ export interface CreateCustomerResponse {
 // ==========================================
 // 5. CYCLE MODELS (/api/cycles)
 // ==========================================
+export interface Cycle {
+  id: string;
+  customerId: string;
+  customerName: string;
+  model: string;
+  serialNumber: string;
+  qrToken: string;
+  createdAt: string;
+}
+
 export interface CreateCycleRequest {
   customerId: string; // GUID, required
   model: string; // required

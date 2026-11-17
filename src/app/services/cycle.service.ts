@@ -1,8 +1,9 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, tap } from 'rxjs';
 import { AppConfigService } from '../app.config.service';
 import {
+  Cycle,
   CreateCycleRequest,
   CreateCycleResponse,
   CycleServiceInfoResponse
@@ -15,14 +16,29 @@ export class CycleService {
   private http = inject(HttpClient);
   private configService = inject(AppConfigService);
 
-  /**
-   * Status indicator for GET /api/cycles:
-   * Backend endpoint is currently NOT AVAILABLE.
-   */
-  readonly isGetAvailable = false;
+  cycles = signal<Cycle[]>([]);
+  isLoading = signal<boolean>(false);
 
   private get baseUrl(): string {
     return this.configService.apiUrl;
+  }
+
+  /**
+   * GET /api/cycles
+   */
+  getCycles(): Observable<Cycle[]> {
+    this.isLoading.set(true);
+    return this.http.get<Cycle[]>(`${this.baseUrl}api/cycles`).pipe(
+      tap({
+        next: (data) => {
+          this.cycles.set(data ?? []);
+          this.isLoading.set(false);
+        },
+        error: () => {
+          this.isLoading.set(false);
+        }
+      })
+    );
   }
 
   /**

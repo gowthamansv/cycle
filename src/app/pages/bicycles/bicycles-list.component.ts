@@ -1,4 +1,6 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { HttpErrorResponse } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
@@ -6,17 +8,47 @@ import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
-import { TagModule } from 'primeng/tag';
 import { DialogModule } from 'primeng/dialog';
 import { TooltipModule } from 'primeng/tooltip';
-import { MessageModule } from 'primeng/message';
-import { TicketService } from '../../services/ticket.service';
-import { Bicycle, BicycleType } from '../../models/cycle-management.models';
+import { SkeletonModule } from 'primeng/skeleton';
+import { IconFieldModule } from 'primeng/iconfield';
+import { InputIconModule } from 'primeng/inputicon';
+import QRCode from 'qrcode';
+import { BicycleType } from '../../models/cycle-management.models';
 import { AuthService } from '../../common/services/auth.service';
 import { CycleService } from '../../services/cycle.service';
 import { MiscService } from '../../services/misc.service';
 import { AppNotificationService } from '../../common/services/notification.service';
-import { CreateCycleRequest } from '../../models/api.models';
+import { AppConfigService } from '../../app.config.service';
+import { CreateCycleRequest, Cycle } from '../../models/api.models';
+
+interface SelectOption {
+  label: string;
+  value: string;
+}
+
+interface UserBikeForm {
+  customerId: string;
+  brand: string;
+  model: string;
+  type: BicycleType;
+  frameNumber: string;
+  serialNumber: string;
+  purchaseDate: string;
+  notes: string;
+}
+
+interface NewBikeForm {
+  brand: string;
+  model: string;
+  type: BicycleType;
+  frameNumber: string;
+  serialNumber: string;
+  customerId: string;
+  gearSystem: string;
+  color: string;
+  notes: string;
+}
 
 @Component({
   selector: 'app-bicycles-list',
@@ -29,10 +61,11 @@ import { CreateCycleRequest } from '../../models/api.models';
     ButtonModule,
     InputTextModule,
     SelectModule,
-    TagModule,
     DialogModule,
     TooltipModule,
-    MessageModule
+    SkeletonModule,
+    IconFieldModule,
+    InputIconModule
   ],
   template: `
     <!-- ============================================================= -->
@@ -106,16 +139,16 @@ import { CreateCycleRequest } from '../../models/api.models';
 
         <!-- Form Actions -->
         <div class="flex items-center justify-end gap-3 pt-4 border-t border-surface-200 dark:border-surface-700">
-          <p-button 
-            label="Cancel" 
-            severity="secondary" 
-            [outlined]="true" 
+          <p-button
+            label="Cancel"
+            severity="secondary"
+            [outlined]="true"
             [disabled]="isSubmitting"
             (click)="cancelUserCreate()"
           ></p-button>
-          <p-button 
-            label="Create Bicycle" 
-            icon="pi pi-check" 
+          <p-button
+            label="Create Bicycle"
+            icon="pi pi-check"
             [loading]="isSubmitting"
             (click)="saveUserBicycle()"
           ></p-button>
@@ -133,56 +166,78 @@ import { CreateCycleRequest } from '../../models/api.models';
           <div class="flex items-center gap-2">
             <h1 class="text-2xl font-bold text-surface-900 dark:text-surface-0 tracking-tight">Bicycle Fleet</h1>
             <span class="text-xs px-2.5 py-1 rounded-full font-semibold bg-orange-100 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300">
-              Bicycle Management
+              {{ bicycles().length }} Bicycles
             </span>
           </div>
-          <p class="text-sm text-muted-color mt-1">Manage bicycle inventory, frame numbers, component specifications, and service intervals.</p>
+          <p class="text-sm text-muted-color mt-1">Manage registered bicycles, serial numbers, QR codes, and service history.</p>
         </div>
 
         <div class="flex items-center gap-3">
           <p-button
+            label="Refresh"
+            icon="pi pi-refresh"
+            [outlined]="true"
+            severity="secondary"
+            size="small"
+            [loading]="isLoading()"
+            (click)="loadBicycles()"
+          ></p-button>
+          <p-button
             label="+ Add Bicycle"
             icon="pi pi-plus"
+            size="small"
             (click)="openAddModal()"
           ></p-button>
         </div>
       </div>
 
-      <!-- Explicit Backend API Status Notice as per requirements -->
-      <div class="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex items-start gap-3">
-        <i class="pi pi-exclamation-triangle text-amber-600 text-lg mt-0.5"></i>
-        <div>
-          <div class="text-sm font-bold text-amber-900 dark:text-amber-200">
-            Backend API Notice: GET /api/cycles is not available
-          </div>
-          <div class="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
-            The backend currently provides <code>POST /api/cycles</code> (create bicycle) and <code>GET /api/cycles/&#123;id&#125;/service-info</code> (service history).
-            The bicycle listing table below is structurally prepared for future GET endpoint release.
+      <!-- Error Banner -->
+      <div *ngIf="loadError()" class="p-4 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 flex items-center justify-between gap-4">
+        <div class="flex items-center gap-3 text-red-700 dark:text-red-300">
+          <i class="pi pi-exclamation-triangle text-xl"></i>
+          <div>
+            <div class="font-semibold text-sm">Unable to load bicycles</div>
+            <div class="text-xs text-red-600 dark:text-red-400">{{ loadErrorMessage() }}</div>
           </div>
         </div>
+        <p-button
+          label="Retry"
+          icon="pi pi-refresh"
+          severity="danger"
+          size="small"
+          (click)="loadBicycles()"
+        ></p-button>
       </div>
 
-      <!-- Filters -->
+      <!-- Search & Filters -->
       <div class="card p-4 shadow-sm border border-surface-200 dark:border-surface-700">
         <div class="flex flex-wrap items-end gap-4">
-          <div class="w-full sm:w-64">
-            <label class="block text-xs font-semibold text-muted-color uppercase mb-1.5">Bicycle Type</label>
-            <p-select
-              [options]="typeOptions"
-              [(ngModel)]="selectedType"
-              placeholder="All Types"
-              [showClear]="true"
-              styleClass="w-full"
-            ></p-select>
+          <div class="w-full sm:flex-1 sm:min-w-64">
+            <label class="block text-xs font-semibold text-muted-color uppercase mb-1.5">Search Bicycles</label>
+            <p-iconfield iconPosition="left" class="w-full block">
+              <p-inputicon class="pi pi-search"></p-inputicon>
+              <input
+                pInputText
+                type="text"
+                [ngModel]="searchQuery()"
+                (ngModelChange)="searchQuery.set($event)"
+                placeholder="Search by model, customer name, serial number, or QR token..."
+                class="w-full"
+              />
+            </p-iconfield>
           </div>
 
           <div class="w-full sm:w-64">
-            <label class="block text-xs font-semibold text-muted-color uppercase mb-1.5">Status</label>
+            <label class="block text-xs font-semibold text-muted-color uppercase mb-1.5">Customer</label>
             <p-select
-              [options]="statusOptions"
-              [(ngModel)]="selectedStatus"
-              placeholder="All Statuses"
+              [options]="customerFilterOptions()"
+              [ngModel]="selectedCustomerId()"
+              (ngModelChange)="selectedCustomerId.set($event)"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="All Customers"
               [showClear]="true"
+              [filter]="true"
               styleClass="w-full"
             ></p-select>
           </div>
@@ -193,17 +248,20 @@ import { CreateCycleRequest } from '../../models/api.models';
               icon="pi pi-filter-slash"
               [outlined]="true"
               severity="secondary"
-              (click)="selectedType = null; selectedStatus = null"
+              [disabled]="!hasActiveFilters()"
+              (click)="resetFilters()"
               styleClass="w-full sm:w-auto"
             ></p-button>
           </div>
         </div>
       </div>
 
-      <!-- Bicycles Table Prepared for GET Integration -->
+      <!-- Bicycles Listing Table -->
       <div class="card p-0 shadow-sm border border-surface-200 dark:border-surface-700 overflow-hidden">
         <p-table
-          [value]="filteredBicycles"
+          [value]="filteredCycles()"
+          dataKey="id"
+          [loading]="isLoading()"
           [paginator]="true"
           [rows]="10"
           [rowsPerPageOptions]="[5, 10, 15, 20]"
@@ -213,59 +271,61 @@ import { CreateCycleRequest } from '../../models/api.models';
         >
           <ng-template #header>
             <tr>
-              <th pSortableColumn="brand" style="min-width: 14rem">Brand & Model <p-sortIcon field="brand"></p-sortIcon></th>
-              <th pSortableColumn="type" style="min-width: 8rem">Type <p-sortIcon field="type"></p-sortIcon></th>
-              <th style="min-width: 9rem">Frame No.</th>
-              <th style="min-width: 9rem">Serial No.</th>
-              <th pSortableColumn="customerName" style="min-width: 11rem">Owner <p-sortIcon field="customerName"></p-sortIcon></th>
-              <th style="min-width: 8.5rem">Purchase Date</th>
-              <th pSortableColumn="lastServiceDate" style="min-width: 8.5rem">Last Service <p-sortIcon field="lastServiceDate"></p-sortIcon></th>
-              <th pSortableColumn="status" style="min-width: 8rem">Status <p-sortIcon field="status"></p-sortIcon></th>
-              <th style="min-width: 7rem" class="text-center">Actions</th>
+              <th pSortableColumn="model" style="min-width: 14rem">Bicycle Model <p-sortIcon field="model"></p-sortIcon></th>
+              <th pSortableColumn="customerName" style="min-width: 12rem">Customer Name <p-sortIcon field="customerName"></p-sortIcon></th>
+              <th pSortableColumn="serialNumber" style="min-width: 10rem">Serial Number <p-sortIcon field="serialNumber"></p-sortIcon></th>
+              <th pSortableColumn="qrToken" style="min-width: 14rem">QR Token <p-sortIcon field="qrToken"></p-sortIcon></th>
+              <th pSortableColumn="createdAt" style="min-width: 11rem">Created Date <p-sortIcon field="createdAt"></p-sortIcon></th>
+              <th style="min-width: 9rem" class="text-center">Actions</th>
             </tr>
           </ng-template>
 
-          <ng-template #body let-bike>
+          <ng-template #body let-cycle>
             <tr>
               <td>
                 <div class="font-bold text-surface-900 dark:text-surface-0 text-sm">
-                  <a [routerLink]="['/bicycles', bike.id]" class="hover:text-primary hover:underline font-semibold">
-                    {{ bike.brand }} {{ bike.model }}
+                  <a [routerLink]="['/bicycles', cycle.id]" class="hover:text-primary hover:underline font-semibold">
+                    {{ cycle.model || '—' }}
                   </a>
                 </div>
-                <div class="text-[11px] text-muted-color font-mono">ID: {{ bike.id }}</div>
+                <div class="text-[11px] text-muted-color font-mono" [pTooltip]="cycle.id">
+                  ID: #{{ cycle.id ? (cycle.id.substring(0, 8) | uppercase) : 'N/A' }}
+                </div>
               </td>
               <td>
-                <span class="inline-block text-xs px-2 py-0.5 rounded bg-surface-100 dark:bg-surface-800 font-medium text-surface-800 dark:text-surface-200">
-                  {{ bike.type }}
-                </span>
-              </td>
-              <td>
-                <span class="font-mono text-xs text-surface-700 dark:text-surface-300 font-medium">{{ bike.frameNumber }}</span>
+                <a
+                  *ngIf="cycle.customerId; else plainCustomerName"
+                  [routerLink]="['/customers', cycle.customerId]"
+                  class="text-xs font-semibold text-primary hover:underline block"
+                >
+                  {{ cycle.customerName || '—' }}
+                </a>
+                <ng-template #plainCustomerName>
+                  <span class="text-xs font-semibold text-surface-800 dark:text-surface-200">{{ cycle.customerName || '—' }}</span>
+                </ng-template>
               </td>
               <td>
                 <span class="font-mono text-xs bg-surface-100 dark:bg-surface-800 px-1.5 py-0.5 rounded text-surface-800 dark:text-surface-200 font-medium">
-                  {{ bike.serialNumber }}
+                  {{ cycle.serialNumber || '—' }}
                 </span>
               </td>
               <td>
-                <a [routerLink]="['/customers', bike.customerId]" class="text-xs font-semibold text-primary hover:underline block">
-                  {{ bike.customerName }}
-                </a>
+                <div class="flex items-center gap-1.5">
+                  <span
+                    class="font-mono text-xs text-surface-700 dark:text-surface-300 truncate max-w-[14rem] inline-block"
+                    [pTooltip]="cycle.qrToken"
+                  >
+                    {{ cycle.qrToken || '—' }}
+                  </span>
+                </div>
               </td>
               <td>
-                <span class="text-xs text-muted-color font-mono">{{ bike.purchaseDate }}</span>
-              </td>
-              <td>
-                <span class="text-xs font-mono text-surface-800 dark:text-surface-200">{{ bike.lastServiceDate }}</span>
-              </td>
-              <td>
-                <p-tag
-                  [value]="bike.status"
-                  [severity]="bike.status === 'Good' ? 'success' : bike.status === 'In Service' ? 'warn' : bike.status === 'Ready for Pickup' ? 'info' : 'danger'"
-                  [rounded]="true"
-                  styleClass="text-xs"
-                ></p-tag>
+                <div class="text-xs font-mono text-surface-800 dark:text-surface-200">
+                  {{ cycle.createdAt ? (cycle.createdAt | date: 'mediumDate') : '—' }}
+                </div>
+                <div *ngIf="cycle.createdAt" class="text-[11px] text-muted-color font-mono">
+                  {{ cycle.createdAt | date: 'shortTime' }}
+                </div>
               </td>
               <td class="text-center">
                 <div class="flex items-center justify-center gap-1">
@@ -275,8 +335,17 @@ import { CreateCycleRequest } from '../../models/api.models';
                     [text]="true"
                     severity="secondary"
                     size="small"
-                    pTooltip="View Bicycle Profile"
-                    [routerLink]="['/bicycles', bike.id]"
+                    pTooltip="View Bicycle Profile & Service History"
+                    [routerLink]="['/bicycles', cycle.id]"
+                  ></p-button>
+                  <p-button
+                    icon="pi pi-qrcode"
+                    [rounded]="true"
+                    [text]="true"
+                    severity="info"
+                    size="small"
+                    pTooltip="View & Print QR Code"
+                    (click)="openQrDialog(cycle)"
                   ></p-button>
                   <p-button
                     icon="pi pi-wrench"
@@ -286,18 +355,38 @@ import { CreateCycleRequest } from '../../models/api.models';
                     size="small"
                     pTooltip="Create Service Ticket"
                     routerLink="/services/new"
+                    [queryParams]="{ customerId: cycle.customerId, cycleId: cycle.id }"
                   ></p-button>
                 </div>
               </td>
             </tr>
           </ng-template>
 
+          <ng-template #loadingbody>
+            <tr *ngFor="let _ of skeletonRows">
+              <td>
+                <p-skeleton width="80%" height="1rem" styleClass="mb-1"></p-skeleton>
+                <p-skeleton width="50%" height="0.75rem"></p-skeleton>
+              </td>
+              <td><p-skeleton width="70%" height="1rem"></p-skeleton></td>
+              <td><p-skeleton width="65%" height="1.25rem"></p-skeleton></td>
+              <td><p-skeleton width="85%" height="1rem"></p-skeleton></td>
+              <td><p-skeleton width="65%" height="1rem"></p-skeleton></td>
+              <td><p-skeleton width="75%" height="1.5rem" styleClass="mx-auto"></p-skeleton></td>
+            </tr>
+          </ng-template>
+
           <ng-template #emptymessage>
-            <tr>
-              <td colspan="9" class="text-center p-8 text-muted-color">
+            <tr *ngIf="!isLoading()">
+              <td colspan="6" class="text-center p-8 text-muted-color">
                 <i class="pi pi-compass text-4xl mb-3 block text-surface-400"></i>
-                <div class="font-medium text-surface-700 dark:text-surface-300">No bicycles available.</div>
-                <div class="text-xs text-muted-color mt-1">Backend service does not expose a global GET /api/cycles endpoint. Bicycles linked to active tickets will appear here.</div>
+                <div class="font-medium text-surface-700 dark:text-surface-300">No bicycles found.</div>
+                <div *ngIf="hasActiveFilters()" class="text-xs text-muted-color mt-1">
+                  No bicycles match your current search or filter criteria.
+                </div>
+                <div *ngIf="!hasActiveFilters()" class="text-xs text-muted-color mt-1">
+                  Register a new bicycle using the button above to see it listed here.
+                </div>
               </td>
             </tr>
           </ng-template>
@@ -376,29 +465,113 @@ import { CreateCycleRequest } from '../../models/api.models';
         </div>
       </div>
     </p-dialog>
+
+    <!-- QR Code Display & Print Modal -->
+    <p-dialog
+      [(visible)]="qrDialogVisible"
+      header="Bicycle QR Code"
+      [modal]="true"
+      [style]="{ width: '90vw', maxWidth: '460px' }"
+      [draggable]="false"
+      [resizable]="false"
+    >
+      <div *ngIf="selectedCycleForQr" class="space-y-4 pt-2">
+        <div class="flex flex-col items-center gap-3 p-4 rounded-xl bg-surface-50 dark:bg-surface-800/60 border border-surface-200 dark:border-surface-700">
+          <div class="bg-white p-3 rounded-xl border border-surface-200 shadow-sm flex items-center justify-center w-44 h-44">
+            <img *ngIf="qrDataUrl()" [src]="qrDataUrl()" alt="Bicycle Service QR Code" class="w-36 h-36 object-contain" />
+            <div *ngIf="!qrDataUrl() && isGeneratingQr()" class="flex items-center justify-center text-muted-color">
+              <i class="pi pi-spin pi-spinner text-2xl"></i>
+            </div>
+          </div>
+
+          <div class="text-center">
+            <div class="text-base font-bold text-surface-900 dark:text-surface-0">{{ selectedCycleForQr.model }}</div>
+            <div class="text-xs text-muted-color mt-0.5">
+              Owner: <span class="font-semibold text-surface-800 dark:text-surface-200">{{ selectedCycleForQr.customerName }}</span>
+            </div>
+            <div class="text-xs text-muted-color font-mono mt-0.5">
+              SN: {{ selectedCycleForQr.serialNumber || '—' }}
+            </div>
+          </div>
+        </div>
+
+        <div class="space-y-2 text-xs">
+          <div>
+            <span class="font-semibold text-muted-color uppercase block mb-1">QR Token</span>
+            <div class="p-2 rounded bg-surface-100 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 font-mono text-[11px] break-all select-all text-surface-800 dark:text-surface-200">
+              {{ selectedCycleForQr.qrToken || '—' }}
+            </div>
+          </div>
+
+          <div>
+            <span class="font-semibold text-muted-color uppercase block mb-1">Service Info Endpoint</span>
+            <div class="p-2 rounded bg-surface-100 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 font-mono text-[11px] break-all select-all text-surface-700 dark:text-surface-300">
+              {{ qrServiceInfoUrl() }}
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-3 border-t border-surface-200 dark:border-surface-700">
+          <p-button
+            label="Close"
+            severity="secondary"
+            [outlined]="true"
+            size="small"
+            (click)="qrDialogVisible = false"
+          ></p-button>
+          <p-button
+            label="Service History"
+            icon="pi pi-history"
+            severity="secondary"
+            size="small"
+            [routerLink]="['/bicycles', selectedCycleForQr.id]"
+            (click)="qrDialogVisible = false"
+          ></p-button>
+          <p-button
+            label="Print QR Sticker"
+            icon="pi pi-print"
+            size="small"
+            [disabled]="!qrDataUrl()"
+            (click)="printQrCode()"
+          ></p-button>
+        </div>
+      </div>
+    </p-dialog>
   `
 })
 export class BicyclesListComponent implements OnInit {
   protected authService = inject(AuthService);
   protected cycleService = inject(CycleService);
   protected miscService = inject(MiscService);
-  protected ticketService = inject(TicketService);
   private notificationService = inject(AppNotificationService);
+  private configService = inject(AppConfigService);
   private router = inject(Router);
+  private destroyRef = inject(DestroyRef);
 
-  bicycles = signal<Bicycle[]>([]);
+  bicycles = signal<Cycle[]>([]);
   isLoading = signal<boolean>(false);
+  loadError = signal<boolean>(false);
+  loadErrorMessage = signal<string>('');
 
-  selectedType: BicycleType | null = null;
-  selectedStatus: string | null = null;
+  searchQuery = signal<string>('');
+  selectedCustomerId = signal<string | null>(null);
   isSubmitting = false;
 
+  readonly skeletonRows = [1, 2, 3, 4, 5];
+
+  // QR Dialog State
+  qrDialogVisible = false;
+  selectedCycleForQr: Cycle | null = null;
+  qrDataUrl = signal<string | null>(null);
+  qrServiceInfoUrl = signal<string>('');
+  isGeneratingQr = signal<boolean>(false);
+
   // Direct User Form Model
-  userBikeForm = {
+  userBikeForm: UserBikeForm = {
     customerId: '',
     brand: '',
     model: '',
-    type: 'Road' as BicycleType,
+    type: 'Road',
     frameNumber: '',
     serialNumber: '',
     purchaseDate: '',
@@ -407,25 +580,19 @@ export class BicyclesListComponent implements OnInit {
 
   // Admin Modal Model
   addDialogVisible = false;
-  newBike = {
-    name: '',
+  newBike: NewBikeForm = {
     brand: '',
     model: '',
-    type: 'Road' as BicycleType,
+    type: 'Road',
     frameNumber: '',
     serialNumber: '',
     customerId: '',
-    customerName: '',
-    purchaseDate: '',
-    status: 'Good' as const,
-    lastServiceDate: '',
-    nextServiceDate: '',
     gearSystem: '',
     color: '',
     notes: ''
   };
 
-  typeOptions = [
+  typeOptions: SelectOption[] = [
     { label: 'Road', value: 'Road' },
     { label: 'Mountain', value: 'Mountain' },
     { label: 'Hybrid', value: 'Hybrid' },
@@ -435,89 +602,197 @@ export class BicyclesListComponent implements OnInit {
     { label: 'Other', value: 'Other' }
   ];
 
-  statusOptions = [
-    { label: 'Good', value: 'Good' },
-    { label: 'Needs Service', value: 'Needs Service' },
-    { label: 'In Service', value: 'In Service' },
-    { label: 'Ready for Pickup', value: 'Ready for Pickup' }
-  ];
+  customerOptions: SelectOption[] = [];
 
-  customerOptions: { label: string; value: string }[] = [];
+  customerFilterOptions = computed<SelectOption[]>(() => {
+    const uniqueCustomers = new Map<string, string>();
+    for (const cycle of this.bicycles()) {
+      if (cycle.customerId && cycle.customerName && !uniqueCustomers.has(cycle.customerId)) {
+        uniqueCustomers.set(cycle.customerId, cycle.customerName);
+      }
+    }
+    return Array.from(uniqueCustomers.entries())
+      .map(([value, label]) => ({ label, value }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  });
+
+  hasActiveFilters = computed<boolean>(() => {
+    return this.searchQuery().trim().length > 0 || this.selectedCustomerId() !== null;
+  });
+
+  filteredCycles = computed<Cycle[]>(() => {
+    const query = this.searchQuery().trim().toLowerCase();
+    const customerId = this.selectedCustomerId();
+
+    return this.bicycles().filter((cycle) => {
+      const matchesCustomer = !customerId || cycle.customerId === customerId;
+      if (!matchesCustomer) {
+        return false;
+      }
+      if (!query) {
+        return true;
+      }
+      return (
+        (cycle.model ?? '').toLowerCase().includes(query) ||
+        (cycle.customerName ?? '').toLowerCase().includes(query) ||
+        (cycle.serialNumber ?? '').toLowerCase().includes(query) ||
+        (cycle.qrToken ?? '').toLowerCase().includes(query)
+      );
+    });
+  });
 
   ngOnInit(): void {
     this.refreshCustomerOptions();
-    this.loadBicycles();
+    if (this.authService.isAdmin()) {
+      this.loadBicycles();
+    }
   }
 
   loadBicycles(): void {
     this.isLoading.set(true);
-    this.ticketService.getTickets().subscribe({
-      next: (tickets) => {
-        const bikesMap = new Map<string, Bicycle>();
-        for (const t of (tickets || [])) {
-          if (!t.cycleId) continue;
-          if (!bikesMap.has(t.cycleId)) {
-            const parts = (t.cycleModel || 'Bicycle').split(' ');
-            const brand = parts[0] || 'Brand';
-            const model = parts.slice(1).join(' ') || t.cycleModel || 'Model';
-            bikesMap.set(t.cycleId, {
-              id: t.cycleId,
-              name: t.cycleModel || 'Bicycle',
-              brand: brand,
-              model: model,
-              type: (t.udF1 || 'Road') as any,
-              customerId: t.customerId,
-              customerName: t.customerName || 'Customer',
-              frameNumber: '',
-              serialNumber: t.serialNumber || 'N/A',
-              purchaseDate: 'N/A',
-              status: (t.status === 'Completed' ? 'Good' : 'In Service') as any,
-              lastServiceDate: t.createdAt ? t.createdAt.split('T')[0] : 'N/A',
-              nextServiceDate: 'N/A',
-              gearSystem: 'Standard',
-              color: 'Standard',
-              notes: t.description || ''
-            });
-          }
+    this.loadError.set(false);
+    this.loadErrorMessage.set('');
+
+    this.cycleService
+      .getCycles()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (cycles: Cycle[]) => {
+          this.bicycles.set(cycles ?? []);
+          this.isLoading.set(false);
+        },
+        error: (err: HttpErrorResponse) => {
+          this.bicycles.set([]);
+          this.isLoading.set(false);
+          this.loadError.set(true);
+          this.loadErrorMessage.set(err?.message || 'Failed to load bicycles from the server.');
+          this.notificationService.handleApiError(
+            'load bicycles',
+            err,
+            'Unable to load bicycles. Please check your connection and try again.'
+          );
         }
-        this.bicycles.set(Array.from(bikesMap.values()));
-        this.isLoading.set(false);
-      },
-      error: () => {
-        this.bicycles.set([]);
-        this.isLoading.set(false);
-      }
-    });
+      });
+  }
+
+  resetFilters(): void {
+    this.searchQuery.set('');
+    this.selectedCustomerId.set(null);
   }
 
   private refreshCustomerOptions(): void {
-    this.miscService.getCustomers().subscribe({
-      next: (custs) => {
-        if (custs && custs.length > 0) {
-          this.customerOptions = custs.map(c => ({
-            label: `${c.name} (${c.phoneNumber || 'No Phone'})`,
-            value: c.id
-          }));
-        } else {
+    this.miscService
+      .getCustomers()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (custs) => {
+          if (custs && custs.length > 0) {
+            this.customerOptions = custs.map((c) => ({
+              label: `${c.name} (${c.phoneNumber || 'No Phone'})`,
+              value: c.id
+            }));
+          } else {
+            this.customerOptions = [];
+          }
+          if (this.customerOptions.length > 0 && !this.userBikeForm.customerId) {
+            this.userBikeForm.customerId = this.customerOptions[0].value;
+          }
+        },
+        error: () => {
           this.customerOptions = [];
         }
-        if (this.customerOptions.length > 0 && !this.userBikeForm.customerId) {
-          this.userBikeForm.customerId = this.customerOptions[0].value;
-        }
-      },
-      error: () => {
-        this.customerOptions = [];
-      }
-    });
+      });
   }
 
-  get filteredBicycles(): Bicycle[] {
-    return this.bicycles().filter(b => {
-      const matchesType = !this.selectedType || b.type === this.selectedType;
-      const matchesStatus = !this.selectedStatus || b.status === this.selectedStatus;
+  // QR Code Display & Printing
+  openQrDialog(cycle: Cycle): void {
+    this.selectedCycleForQr = cycle;
+    this.qrDialogVisible = true;
+    this.qrDataUrl.set(null);
+    this.isGeneratingQr.set(true);
 
-      return matchesType && matchesStatus;
-    });
+    const baseUrl = this.configService.apiUrl.replace(/\/+$/, '');
+    const serviceInfoUrl = `${baseUrl}/api/cycles/${cycle.id}/service-info`;
+    this.qrServiceInfoUrl.set(serviceInfoUrl);
+
+    QRCode.toDataURL(serviceInfoUrl, {
+      width: 300,
+      margin: 2,
+      errorCorrectionLevel: 'M',
+      color: {
+        dark: '#000000',
+        light: '#ffffff'
+      }
+    })
+      .then((url: string) => {
+        this.qrDataUrl.set(url);
+        this.isGeneratingQr.set(false);
+      })
+      .catch(() => {
+        this.qrDataUrl.set(null);
+        this.isGeneratingQr.set(false);
+        this.notificationService.showError('QR Generation Failed', 'Unable to generate QR code for this bicycle.');
+      });
+  }
+
+  printQrCode(): void {
+    const dataUrl = this.qrDataUrl();
+    const cycle = this.selectedCycleForQr;
+    if (!dataUrl || !cycle) {
+      this.notificationService.showWarning('QR Unavailable', 'No valid QR code available to print.');
+      return;
+    }
+
+    const printWindow = window.open('', '_blank', 'width=450,height=550');
+    if (!printWindow) {
+      this.notificationService.showWarning('Popup Blocked', 'Please allow popups for printing the QR code.');
+      return;
+    }
+
+    const safeId = this.escapeHtml(cycle.id);
+    const safeModel = this.escapeHtml(cycle.model || 'Bicycle');
+    const safeCustomer = this.escapeHtml(cycle.customerName || '');
+    const safeSerial = this.escapeHtml(cycle.serialNumber || '');
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Cycle Service QR - ${safeId}</title>
+          <style>
+            @page { size: auto; margin: 8mm; }
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 20px; color: #111827; }
+            .qr-card { display: inline-block; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; max-width: 320px; box-sizing: border-box; }
+            .brand-title { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #ea580c; margin-bottom: 6px; }
+            .qr-code-print { width: 3cm !important; height: 3cm !important; display: block; margin: 0 auto; }
+            .cycle-info { font-size: 11px; font-weight: 700; margin-top: 8px; }
+            .cycle-meta { font-size: 10px; color: #4b5563; margin-top: 2px; }
+          </style>
+        </head>
+        <body>
+          <div class="qr-card">
+            <div class="brand-title">FREEWHEEL SERVICE CENTER</div>
+            <img src="${dataUrl}" alt="QR Code" class="qr-code-print" />
+            <div class="cycle-info">${safeModel}</div>
+            ${safeCustomer ? `<div class="cycle-meta">${safeCustomer}</div>` : ''}
+            ${safeSerial ? `<div class="cycle-meta">SN: ${safeSerial}</div>` : ''}
+          </div>
+          <script>
+            window.onload = function() { window.focus(); window.print(); window.close(); };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  }
+
+  private escapeHtml(value: string): string {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   // User Actions (Live Backend POST /api/cycles)
@@ -540,35 +815,40 @@ export class BicyclesListComponent implements OnInit {
       serialNumber: serial
     };
 
-    this.cycleService.createCycle(reqPayload).subscribe({
-      next: () => {
-        this.isSubmitting = false;
+    this.cycleService
+      .createCycle(reqPayload)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.isSubmitting = false;
 
-        this.notificationService.showApiSuccess(
-          'create',
-          'Bicycle',
-          `${fullModel} registered successfully.`
-        );
+          this.notificationService.showApiSuccess(
+            'create',
+            'Bicycle',
+            `${fullModel} registered successfully.`
+          );
 
-        this.loadBicycles();
+          if (this.authService.isAdmin()) {
+            this.loadBicycles();
+          }
 
-        // Reset user form
-        this.userBikeForm = {
-          customerId: this.customerOptions.length > 0 ? this.customerOptions[0].value : '',
-          brand: '',
-          model: '',
-          type: 'Road',
-          frameNumber: '',
-          serialNumber: '',
-          purchaseDate: '',
-          notes: ''
-        };
-      },
-      error: (err) => {
-        this.isSubmitting = false;
-        this.notificationService.handleApiError('create bicycle', err);
-      }
-    });
+          // Reset user form
+          this.userBikeForm = {
+            customerId: this.customerOptions.length > 0 ? this.customerOptions[0].value : '',
+            brand: '',
+            model: '',
+            type: 'Road',
+            frameNumber: '',
+            serialNumber: '',
+            purchaseDate: '',
+            notes: ''
+          };
+        },
+        error: (err: HttpErrorResponse) => {
+          this.isSubmitting = false;
+          this.notificationService.handleApiError('create bicycle', err);
+        }
+      });
   }
 
   cancelUserCreate(): void {
@@ -579,18 +859,12 @@ export class BicyclesListComponent implements OnInit {
   openAddModal(): void {
     const custs = this.customerOptions;
     this.newBike = {
-      name: '',
       brand: '',
       model: '',
       type: 'Road',
       frameNumber: '',
       serialNumber: '',
       customerId: custs.length > 0 ? custs[0].value : '',
-      customerName: '',
-      purchaseDate: '',
-      status: 'Good',
-      lastServiceDate: '',
-      nextServiceDate: '',
       gearSystem: '',
       color: '',
       notes: ''
@@ -599,7 +873,7 @@ export class BicyclesListComponent implements OnInit {
   }
 
   saveBicycle(): void {
-    if (!this.newBike.brand || !this.newBike.model || !this.newBike.customerId) {
+    if (!this.newBike.brand.trim() || !this.newBike.model.trim() || !this.newBike.customerId) {
       this.notificationService.showWarning(
         'Incomplete Form',
         'Brand, Model and Customer are required.'
@@ -617,22 +891,24 @@ export class BicyclesListComponent implements OnInit {
       serialNumber: serial
     };
 
-    this.cycleService.createCycle(reqPayload).subscribe({
-      next: () => {
-        this.isSubmitting = false;
-        this.addDialogVisible = false;
-        this.notificationService.showApiSuccess(
-          'create',
-          'Bicycle',
-          `${fullModel} registered successfully.`
-        );
-        this.loadBicycles();
-      },
-      error: (err) => {
-        this.isSubmitting = false;
-        this.notificationService.handleApiError('register bicycle', err);
-      }
-    });
+    this.cycleService
+      .createCycle(reqPayload)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.isSubmitting = false;
+          this.addDialogVisible = false;
+          this.notificationService.showApiSuccess(
+            'create',
+            'Bicycle',
+            `${fullModel} registered successfully.`
+          );
+          this.loadBicycles();
+        },
+        error: (err: HttpErrorResponse) => {
+          this.isSubmitting = false;
+          this.notificationService.handleApiError('register bicycle', err);
+        }
+      });
   }
 }
-
