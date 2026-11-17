@@ -164,15 +164,13 @@ import { Bicycle } from '../../models/cycle-management.models';
       <!-- ========================================================= -->
       <!-- 3. FILTERS TOOLBAR                                        -->
       <!-- ========================================================= -->
-      <div class="bg-surface-0 dark:bg-surface-900 p-4 rounded-xl border border-surface-200 dark:border-surface-700 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
+      <!-- <div class="bg-surface-0 dark:bg-surface-900 p-4 rounded-xl border border-surface-200 dark:border-surface-700 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
         <div class="flex items-center gap-2 text-xs text-muted-color">
           <i class="pi pi-filter text-orange-500"></i>
           <span class="font-semibold uppercase tracking-wider">Filters:</span>
         </div>
 
-        <!-- Filter Selectors -->
         <div class="flex flex-wrap items-center gap-2">
-          <!-- Status Filter -->
           <p-select
             [options]="statusFilterOptions"
             [(ngModel)]="selectedStatusFilter"
@@ -181,7 +179,7 @@ import { Bicycle } from '../../models/cycle-management.models';
             styleClass="w-40 text-sm"
           ></p-select>
 
-          <!-- Technician Filter -->
+          
           <p-select
             [options]="technicianFilterOptions"
             [(ngModel)]="selectedTechnicianFilter"
@@ -190,7 +188,6 @@ import { Bicycle } from '../../models/cycle-management.models';
             styleClass="w-48 text-sm"
           ></p-select>
 
-          <!-- Priority Filter -->
           <p-select
             [options]="priorityFilterOptions"
             [(ngModel)]="selectedPriorityFilter"
@@ -199,7 +196,6 @@ import { Bicycle } from '../../models/cycle-management.models';
             styleClass="w-36 text-sm"
           ></p-select>
 
-          <!-- Reset Filters -->
           <p-button
             *ngIf="hasActiveFilters"
             icon="pi pi-filter-slash"
@@ -211,7 +207,7 @@ import { Bicycle } from '../../models/cycle-management.models';
             pTooltip="Clear active filters"
           ></p-button>
         </div>
-      </div>
+      </div> -->
 
       <!-- ========================================================= -->
       <!-- 4. ERROR STATE BANNER                                     -->
@@ -1016,7 +1012,7 @@ export class ServicesListComponent implements OnInit {
 
     // Fetch Tickets from API
     this.ticketService.getTickets().subscribe({
-      next: () => {},
+      next: () => { },
       error: (err) => {
         this.loadError.set(true);
         this.loadErrorMessage.set(err?.message || 'Failed to connect to /api/tickets');

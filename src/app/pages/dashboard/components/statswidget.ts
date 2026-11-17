@@ -28,9 +28,8 @@ import { MiscService } from '../../../services/misc.service';
         </div>
         <div class="flex items-center text-xs">
           <span class="text-orange-600 dark:text-orange-400 font-semibold flex items-center mr-1">
-            <i class="pi pi-database text-xs mr-0.5"></i>GET /api/tickets
+            <i class="pi pi-database text-xs mr-0.5"></i>Total Registered
           </span>
-          <span class="text-muted-color">total registered</span>
         </div>
       </div>
     </div>
@@ -105,9 +104,8 @@ import { MiscService } from '../../../services/misc.service';
         </div>
         <div class="flex items-center text-xs">
           <span class="text-purple-600 dark:text-purple-400 font-semibold flex items-center mr-1">
-            <i class="pi pi-database text-xs mr-0.5"></i>/api/misc/customers
+            <i class="pi pi-database text-xs mr-0.5"></i>Registered Clients
           </span>
-          <span class="text-muted-color">registered clients</span>
         </div>
       </div>
     </div>

@@ -348,7 +348,12 @@ export class AdminLoginComponent implements OnInit {
     this.authService.loginAdmin(username, password, remember).subscribe({
       next: (response) => {
         this.isLoading = false;
-        if (response.user.role === 'admin') {
+        const isAdmiinTeam = response.user.groups?.some(
+          (x: any) => x.name === 'Admin Team'
+        );
+
+        console.log(isAdmiinTeam, "hi")
+        if (isAdmiinTeam) {
           const target = this.returnUrl || '/dashboard';
           this.router.navigateByUrl(target);
         } else {

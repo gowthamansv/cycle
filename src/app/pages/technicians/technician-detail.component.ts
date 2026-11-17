@@ -5,9 +5,10 @@ import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { CardModule } from 'primeng/card';
+import { UserService } from '../../services/user.service';
 import { MiscService } from '../../services/misc.service';
 import { TicketService } from '../../services/ticket.service';
-import { MiscUser, TicketResponseDto } from '../../models/api.models';
+import { MiscUser, TicketResponseDto, UserResponse } from '../../models/api.models';
 
 @Component({
   selector: 'app-technician-detail',
@@ -25,18 +26,27 @@ import { MiscUser, TicketResponseDto } from '../../models/api.models';
       <!-- Profile Header -->
       <div class="bg-surface-0 dark:bg-surface-900 p-6 rounded-xl border border-surface-200 dark:border-surface-700 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div class="flex items-start gap-4">
-          <div class="w-16 h-16 rounded-2xl bg-orange-500/10 text-orange-600 dark:text-orange-400 flex items-center justify-center font-bold text-2xl border border-orange-500/20">
+          <div class="w-16 h-16 rounded-2xl bg-orange-500/10 text-orange-600 dark:text-orange-400 flex items-center justify-center font-bold text-2xl border border-orange-500/20 shrink-0">
             {{ getUserInitials(user) }}
           </div>
           <div>
             <div class="flex items-center gap-3">
               <h1 class="text-2xl font-bold text-surface-900 dark:text-surface-0">{{ getUserFullName(user) }}</h1>
-              <p-tag value="Active Staff" severity="success"></p-tag>
+              <p-tag
+                [value]="asUserResponse(user)?.isActive === false ? 'Inactive' : 'Active Staff'"
+                [severity]="asUserResponse(user)?.isActive === false ? 'danger' : 'success'"
+              ></p-tag>
             </div>
             <div class="text-xs text-orange-600 dark:text-orange-400 font-semibold mt-0.5">Workshop Staff User</div>
             <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-color mt-1">
               <span><i class="pi pi-id-card mr-1 text-[11px]"></i>ID: #{{ user.id ? (user.id.substring(0, 8) | uppercase) : 'N/A' }}</span>
               <span *ngIf="user.email"><i class="pi pi-envelope mr-1 text-[11px]"></i>{{ user.email }}</span>
+              <span *ngIf="asUserResponse(user)?.phoneNumber"><i class="pi pi-phone mr-1 text-[11px]"></i>{{ asUserResponse(user)?.phoneNumber }}</span>
+            </div>
+            <div class="flex flex-wrap gap-1 mt-2" *ngIf="getUserRoles(user).length > 0">
+              <span *ngFor="let role of getUserRoles(user)" class="text-[10px] font-semibold px-2 py-0.5 rounded bg-surface-100 dark:bg-surface-800 text-surface-700 dark:text-surface-300">
+                {{ role }}
+              </span>
             </div>
           </div>
         </div>
@@ -161,10 +171,11 @@ import { MiscUser, TicketResponseDto } from '../../models/api.models';
 })
 export class TechnicianDetailComponent implements OnInit {
   private route = inject(ActivatedRoute);
+  private userService = inject(UserService);
   private miscService = inject(MiscService);
   private ticketService = inject(TicketService);
 
-  user: MiscUser | null = null;
+  user: UserResponse | MiscUser | null = null;
   assignedJobs: TicketResponseDto[] = [];
 
   ngOnInit(): void {
@@ -177,13 +188,23 @@ export class TechnicianDetailComponent implements OnInit {
   }
 
   loadUser(id: string): void {
-    const existing = this.miscService.users().find(u => u.id === id);
+    const existing =
+      this.userService.users().find(u => u.id === id) ||
+      this.miscService.users().find(u => u.id === id);
+
     if (existing) {
       this.user = existing;
     } else {
-      this.miscService.getUsers().subscribe({
+      this.userService.getUsers().subscribe({
         next: (users) => {
           this.user = (users || []).find(u => u.id === id) || null;
+        },
+        error: () => {
+          this.miscService.getUsers().subscribe({
+            next: (users) => {
+              this.user = (users || []).find(u => u.id === id) || null;
+            }
+          });
         }
       });
     }
@@ -196,6 +217,18 @@ export class TechnicianDetailComponent implements OnInit {
         this.assignedJobs = [];
       }
     });
+  }
+
+  asUserResponse(user: UserResponse | MiscUser | null): UserResponse | null {
+    if (!user) return null;
+    return user as UserResponse;
+  }
+
+  getUserRoles(user: UserResponse | MiscUser | null): string[] {
+    if (!user) return [];
+    const u = user as UserResponse;
+    if (!u.roles || u.roles.length === 0) return [];
+    return u.roles.map((r: any) => typeof r === 'string' ? r : r.name).filter(Boolean);
   }
 
   get activeJobsCount(): number {
@@ -212,12 +245,12 @@ export class TechnicianDetailComponent implements OnInit {
     }).length;
   }
 
-  getUserFullName(user: MiscUser): string {
+  getUserFullName(user: UserResponse | MiscUser): string {
     const parts = [user.firstName, user.lastName].filter(Boolean);
     return parts.length > 0 ? parts.join(' ') : (user.email || 'Staff Member');
   }
 
-  getUserInitials(user: MiscUser): string {
+  getUserInitials(user: UserResponse | MiscUser): string {
     const first = user.firstName ? user.firstName.charAt(0).toUpperCase() : '';
     const last = user.lastName ? user.lastName.charAt(0).toUpperCase() : '';
     return first + last || (user.email ? user.email.charAt(0).toUpperCase() : 'S');

@@ -261,6 +261,28 @@ export interface AssignedTicketResponseDto {
 // ==========================================
 // 3. USER MANAGEMENT MODELS (/api/users)
 // ==========================================
+export interface UserRoleDto {
+  id: string; // GUID
+  name: string;
+}
+
+export interface UserGroupDto {
+  id: string; // GUID
+  name: string;
+}
+
+export interface UserResponse {
+  id: string; // GUID
+  firstName: string;
+  lastName?: string | null;
+  email?: string | null;
+  phoneNumber?: string | null;
+  isActive: boolean;
+  createdAt?: string | null;
+  roles?: UserRoleDto[];
+  groups?: UserGroupDto[];
+}
+
 export interface CreateUserRequest {
   firstName: string; // required
   lastName?: string | null;
@@ -277,6 +299,28 @@ export interface CreateUserResponse {
   lastName?: string | null;
   email?: string | null;
   phoneNumber: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface UpdateUserRequest {
+  id?: string; // GUID from route
+  firstName: string;
+  lastName?: string | null;
+  email?: string | null;
+  phoneNumber?: string | null;
+  isActive: boolean;
+  roleIds?: string[];
+  groupIds?: string[];
+  password?: string;
+}
+
+export interface UpdateUserResponse {
+  id: string; // GUID
+  firstName: string;
+  lastName?: string | null;
+  email?: string | null;
+  phoneNumber?: string | null;
   isActive: boolean;
   createdAt: string;
 }

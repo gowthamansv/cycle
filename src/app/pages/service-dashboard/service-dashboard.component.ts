@@ -30,10 +30,7 @@ import { MiscService } from '../../services/misc.service';
         <div>
           <div class="flex items-center gap-2">
             <h1 class="text-2xl font-bold text-surface-900 dark:text-surface-0 tracking-tight">Workshop Operations Dashboard</h1>
-            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1 animate-pulse"></span>
-              Live Backend API
-            </span>
+            
           </div>
           <p class="text-sm text-muted-color mt-1">Live bicycle service center data streaming directly from backend API endpoints.</p>
         </div>

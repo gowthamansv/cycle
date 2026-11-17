@@ -15,6 +15,8 @@ export interface AuthUser {
   role: UserRole;
   facility?: string;
   name?: string;
+  groups?: [];
+  roles?: [];
 }
 
 export interface AuthResponse {
@@ -79,13 +81,13 @@ export class AuthService {
       return this.http.post<any>(authBaseUrl + `api/auth/login`, payload).pipe(
         map((response) => {
           const token = response.accessToken || response.token || 'auth_jwt_token';
-          const rawRole = (response.role || response.user?.role || response.Role || response.userType || 'admin').toLowerCase();
-          const role: UserRole = rawRole === 'admin' ? 'admin' : 'user';
 
           const user: AuthUser = {
-            name: response.firstName || response.name || response.user?.name || (role === 'admin' ? 'Cycle Center Administrator' : 'Service Staff User'),
+            name: response.firstName || response.name || response.user?.name,
             email: response.email || response.user?.email || trimmedInput,
-            role: role,
+            role: response.roles[0].name === "Admin" ? "admin" : "user",
+            roles: response.roles,
+            groups: response.groups,
             facility: response.facility || 'Main Service Hub #01',
           };
 
