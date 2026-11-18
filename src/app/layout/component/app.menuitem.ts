@@ -3,6 +3,8 @@ import { NavigationEnd, Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { RippleModule } from 'primeng/ripple';
 import { LayoutService } from '../service/layout.service';
+import { AuthService } from '../../common/services/auth.service';
+import { PosthogService } from '../../services/posthog.service';
 
 import { filter } from 'rxjs/operators';
 
@@ -122,6 +124,10 @@ export class AppMenuitem {
 
   router = inject(Router);
 
+  private authService = inject(AuthService);
+
+  private posthogService = inject(PosthogService);
+
   item = input<any>(null);
 
   root = input<boolean>(false);
@@ -222,6 +228,27 @@ export class AppMenuitem {
         }));
       }
     } else {
+      const rawDestination = item?.routerLink
+        ? Array.isArray(item.routerLink)
+          ? item.routerLink.join('/')
+          : String(item.routerLink)
+        : item?.url
+          ? String(item.url)
+          : '';
+
+      if (rawDestination && item?.label) {
+        this.posthogService.trackMenuClick(
+          'sidebar_menu_clicked',
+          {
+            menuName: item.label,
+            menuLocation: 'Sidebar',
+            destination: rawDestination,
+            menuVariant: this.authService.isAdmin() ? 'Admin Sidebar Menu' : 'User Sidebar Menu',
+          },
+          this.authService.getAnalyticsContext()
+        );
+      }
+
       this.layoutService.layoutState.update((val) => ({
         ...val,
         overlayMenuActive: false,

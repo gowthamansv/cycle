@@ -9,6 +9,8 @@ import { ServiceActivityWidget } from './service-activity.component';
 import { TodayScheduleWidget } from './today-schedule.component';
 import { TicketService } from '../../services/ticket.service';
 import { MiscService } from '../../services/misc.service';
+import { AuthService } from '../../common/services/auth.service';
+import { PosthogService } from '../../services/posthog.service';
 
 @Component({
   selector: 'app-service-dashboard',
@@ -50,6 +52,7 @@ import { MiscService } from '../../services/misc.service';
             label="+ Add Service"
             icon="pi pi-wrench"
             routerLink="/services/new"
+            (onClick)="trackDashboardNav('Add Service', '/services/new')"
             size="small"
             styleClass="bg-orange-500 hover:bg-orange-600 border-none text-white font-semibold"
           ></p-button>
@@ -79,9 +82,23 @@ import { MiscService } from '../../services/misc.service';
 export class ServiceDashboardComponent implements OnInit {
   protected ticketService = inject(TicketService);
   protected miscService = inject(MiscService);
+  private authService = inject(AuthService);
+  private posthogService = inject(PosthogService);
 
   ngOnInit(): void {
     this.refreshAll();
+  }
+
+  trackDashboardNav(menuName: string, destination: string): void {
+    this.posthogService.trackMenuClick(
+      'dashboard_menu_clicked',
+      {
+        menuName,
+        menuLocation: 'Dashboard Header',
+        destination,
+      },
+      this.authService.getAnalyticsContext()
+    );
   }
 
   refreshAll(): void {

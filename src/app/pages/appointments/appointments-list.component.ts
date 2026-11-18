@@ -14,6 +14,8 @@ import { ToastModule } from 'primeng/toast';
 import { TooltipModule } from 'primeng/tooltip';
 import { ConfirmationService } from 'primeng/api';
 import { AppNotificationService } from '../../common/services/notification.service';
+import { AuthService } from '../../common/services/auth.service';
+import { PosthogService } from '../../services/posthog.service';
 import { CycleDataService } from '../../services/cycle-data.service';
 import { Appointment, AppointmentStatus } from '../../models/cycle-management.models';
 
@@ -315,6 +317,8 @@ export class AppointmentsListComponent implements OnInit {
   protected dataService = inject(CycleDataService);
   private confirmationService = inject(ConfirmationService);
   private notificationService = inject(AppNotificationService);
+  private authService = inject(AuthService);
+  private posthogService = inject(PosthogService);
 
   selectedStatus: string | null = null;
   selectedTechnician: string | null = null;
@@ -371,6 +375,15 @@ export class AppointmentsListComponent implements OnInit {
   viewDetails(apt: Appointment): void {
     this.selectedAppointment = apt;
     this.detailDialogVisible = true;
+    const ctx = this.authService.getAnalyticsContext();
+    this.posthogService.capture('appointment_details_viewed', {
+      ...(ctx.isAuthenticated && ctx.userId ? { user_id: ctx.userId } : {}),
+      user_role: ctx.userRole,
+      is_authenticated: ctx.isAuthenticated,
+      application_section: 'Appointments',
+      appointment_status: apt.status,
+      service_type: apt.serviceType,
+    });
   }
 
   updateStatus(apt: Appointment, newStatus: AppointmentStatus): void {

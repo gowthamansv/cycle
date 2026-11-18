@@ -8,6 +8,8 @@ import { DialogModule } from 'primeng/dialog';
 import { TooltipModule } from 'primeng/tooltip';
 import { TicketService } from '../../services/ticket.service';
 import { TicketResponseDto } from '../../models/api.models';
+import { AuthService } from '../../common/services/auth.service';
+import { PosthogService } from '../../services/posthog.service';
 
 @Component({
   selector: 'app-service-today-jobs',
@@ -137,6 +139,7 @@ import { TicketResponseDto } from '../../models/api.models';
                   pTooltip="Open in Services"
                   tooltipPosition="top"
                   routerLink="/services"
+                  (onClick)="trackDashboardNav('Open in Services', '/services')"
                 ></p-button>
               </div>
             </td>
@@ -225,7 +228,7 @@ import { TicketResponseDto } from '../../models/api.models';
             size="small"
             routerLink="/services"
             styleClass="ml-2"
-            (click)="ticketDialogVisible = false"
+            (click)="onManageInServicesClick()"
           ></p-button>
         </div>
       </div>
@@ -234,10 +237,29 @@ import { TicketResponseDto } from '../../models/api.models';
 })
 export class ServiceTodayJobsWidget {
   protected ticketService = inject(TicketService);
+  private authService = inject(AuthService);
+  private posthogService = inject(PosthogService);
 
   tickets = this.ticketService.tickets;
   ticketDialogVisible = false;
   selectedTicket: TicketResponseDto | null = null;
+
+  trackDashboardNav(menuName: string, destination: string): void {
+    this.posthogService.trackMenuClick(
+      'dashboard_menu_clicked',
+      {
+        menuName,
+        menuLocation: 'Dashboard Jobs Widget',
+        destination,
+      },
+      this.authService.getAnalyticsContext()
+    );
+  }
+
+  onManageInServicesClick(): void {
+    this.ticketDialogVisible = false;
+    this.trackDashboardNav('Manage in Services', '/services');
+  }
 
   refreshTickets(): void {
     this.ticketService.getTickets().subscribe();

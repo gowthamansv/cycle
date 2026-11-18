@@ -12,6 +12,7 @@ import { MenuItem } from 'primeng/api';
 import { ThemeService } from '../../theme/theme.service';
 import { ThemeDrawerComponent } from '../../theme/theme-drawer.component';
 import { AuthService } from '../../common/services/auth.service';
+import { PosthogService } from '../../services/posthog.service';
 
 interface MenuGroup {
   title: string;
@@ -53,7 +54,7 @@ interface MenuGroup {
       </button>
 
       <!-- BRAND LOGO -->
-      <a routerLink="/" class="logo-section">
+      <a routerLink="/" class="logo-section" (click)="onNavbarLinkClick('Brand Logo', '/', 'Topbar')">
         <img 
           [src]="themeService.isDark() ? 'assets/images/logo.png' : 'assets/images/logo-dark.png'" 
           alt="Cycle Service Center" 
@@ -75,6 +76,7 @@ interface MenuGroup {
             <a 
               *ngIf="item.routerLink && root" 
               [routerLink]="item.routerLink" 
+              (click)="onNavbarLinkClick(item.label, item.routerLink, 'Topbar')"
               routerLinkActive="active-topbar-link" 
               [routerLinkActiveOptions]="{ exact: item.routerLink === '/dashboard' || item.routerLink === '/' }"
               class="p-menubar-item-link flex items-center gap-2 cursor-pointer"
@@ -97,6 +99,7 @@ interface MenuGroup {
             <a 
               *ngIf="!root && item.routerLink" 
               [routerLink]="item.routerLink" 
+              (click)="onNavbarLinkClick(item.label, item.routerLink, 'Topbar Submenu')"
               routerLinkActive="active-submenu-link"
               [routerLinkActiveOptions]="{ exact: item.routerLink === '/dashboard' || item.routerLink === '/' }"
               class="p-menubar-item-link flex items-center gap-2.5 cursor-pointer w-full"
@@ -149,7 +152,7 @@ interface MenuGroup {
           </div>
           <a 
             *ngFor="let item of menuSuggestions()" 
-            (mousedown)="navigateTo(item.routerLink)"
+            (mousedown)="navigateTo(item.routerLink, item.label, item.category)"
             class="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors cursor-pointer text-surface-800 dark:text-surface-200 no-underline"
           >
             <div class="w-7 h-7 rounded-lg bg-orange-500/10 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0">
@@ -243,7 +246,7 @@ interface MenuGroup {
       <div *ngIf="menuSuggestions().length > 0" class="mt-2 max-h-60 overflow-y-auto flex flex-col gap-1">
         <a 
           *ngFor="let item of menuSuggestions()" 
-          (click)="navigateTo(item.routerLink)"
+          (click)="navigateTo(item.routerLink, item.label, item.category)"
           class="flex items-center gap-2.5 p-2 rounded-lg text-xs bg-surface-50 dark:bg-surface-800/80 hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-800 dark:text-surface-200 cursor-pointer"
         >
           <i [class]="item.icon" class="text-orange-500 text-sm"></i>
@@ -284,7 +287,7 @@ interface MenuGroup {
               <a 
                 *ngFor="let item of group.items" 
                 [routerLink]="item.routerLink" 
-                (click)="mobileDrawerVisible = false"
+                (click)="onMobileDrawerItemClick(item.label, item.routerLink, group.title)"
                 routerLinkActive="active-mobile-link"
                 [routerLinkActiveOptions]="{ exact: item.routerLink === '/dashboard' || item.routerLink === '/' }"
                 class="mobile-nav-item flex items-center gap-3 px-3 py-2 rounded-lg text-surface-700 dark:text-surface-200 hover:bg-surface-hover transition-colors font-medium text-sm"
@@ -702,6 +705,7 @@ export class AppTopbar {
   themeService = inject(ThemeService);
   authService = inject(AuthService);
   private router = inject(Router);
+  private posthogService = inject(PosthogService);
 
   searchQuery = '';
   searchFocused = false;
@@ -742,11 +746,62 @@ export class AppTopbar {
     }, 200);
   }
 
-  navigateTo(route: string): void {
+  navigateTo(route: string, menuName?: string, menuCategory?: string): void {
+    this.posthogService.trackMenuClick(
+      'navigation_menu_clicked',
+      {
+        menuName: menuName || route,
+        menuLocation: 'Menu Search',
+        destination: route,
+        menuCategory,
+        menuVariant: this.getMenuVariant(),
+      },
+      this.authService.getAnalyticsContext()
+    );
     this.searchQuery = '';
     this.searchFocused = false;
     this.showMobileSearch.set(false);
     this.router.navigateByUrl(route);
+  }
+
+  onNavbarLinkClick(menuName: string, destination: string | string[], location: 'Topbar' | 'Topbar Submenu'): void {
+    const targetRoute = Array.isArray(destination) ? destination.join('/') : destination;
+    const category = this.findMenuCategory(targetRoute);
+    this.posthogService.trackMenuClick(
+      'navbar_link_clicked',
+      {
+        menuName,
+        menuLocation: location,
+        destination: targetRoute,
+        menuCategory: category,
+        menuVariant: this.getMenuVariant(),
+      },
+      this.authService.getAnalyticsContext()
+    );
+  }
+
+  onMobileDrawerItemClick(menuName: string, destination: string, category: string): void {
+    this.mobileDrawerVisible = false;
+    this.posthogService.trackMenuClick(
+      'navigation_menu_clicked',
+      {
+        menuName,
+        menuLocation: 'Mobile Drawer',
+        destination,
+        menuCategory: category,
+        menuVariant: this.getMenuVariant(),
+      },
+      this.authService.getAnalyticsContext()
+    );
+  }
+
+  private getMenuVariant(): string {
+    return this.authService.isAdmin() ? 'Admin Portal Menu' : 'Workshop User Menu';
+  }
+
+  private findMenuCategory(route: string): string | undefined {
+    const match = this.allMenuItems().find((item) => item.routerLink === route);
+    return match?.category;
   }
 
   // Grouped Menu Structure (Mirroring the categorized system structure)

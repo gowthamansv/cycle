@@ -17,6 +17,8 @@ import { MiscService } from '../../services/misc.service';
 import { CycleService } from '../../services/cycle.service';
 import { FreewheelCatalogService } from '../../services/freewheel-catalog.service';
 import { AppNotificationService } from '../../common/services/notification.service';
+import { AuthService } from '../../common/services/auth.service';
+import { PosthogService } from '../../services/posthog.service';
 import {
   CreateTicketRequest,
   UpdateTicketRequest,
@@ -702,6 +704,8 @@ export class ServiceFormComponent implements OnInit, OnDestroy {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private notificationService = inject(AppNotificationService);
+  private authService = inject(AuthService);
+  private posthogService = inject(PosthogService);
   protected ticketService = inject(TicketService);
   protected miscService = inject(MiscService);
   protected cycleService = inject(CycleService);
@@ -1271,6 +1275,14 @@ export class ServiceFormComponent implements OnInit, OnDestroy {
       this.ticketService.createTicket(createPayload).subscribe({
         next: (res) => {
           this.submitting = false;
+          const ctx = this.authService.getAnalyticsContext();
+          this.posthogService.capture('service_booking_completed', {
+            ...(ctx.isAuthenticated && ctx.userId ? { user_id: ctx.userId } : {}),
+            user_role: ctx.userRole,
+            is_authenticated: ctx.isAuthenticated,
+            application_section: 'Services',
+            selected_services_count: this.selectedRequestedServices.length,
+          });
           this.notificationService.showApiSuccess(
             'create',
             'Service ticket',

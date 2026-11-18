@@ -1,9 +1,11 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { StyleClassModule } from 'primeng/styleclass';
 import { Router, RouterModule } from '@angular/router';
 import { RippleModule } from 'primeng/ripple';
 import { ButtonModule } from 'primeng/button';
 import { AppFloatingConfigurator } from '../../../layout/component/app.floatingconfigurator';
+import { AuthService } from '../../../common/services/auth.service';
+import { PosthogService } from '../../../services/posthog.service';
 
 @Component({
   selector: 'topbar-widget',
@@ -65,7 +67,7 @@ import { AppFloatingConfigurator } from '../../../layout/component/app.floatingc
       >
         <li>
           <a
-            (click)="router.navigate(['/landing'], { fragment: 'home' })"
+            (click)="navigateSection('Home', 'home')"
             pRipple
             class="px-0 py-4 text-surface-900 dark:text-surface-0 font-medium text-xl"
           >
@@ -74,7 +76,7 @@ import { AppFloatingConfigurator } from '../../../layout/component/app.floatingc
         </li>
         <li>
           <a
-            (click)="router.navigate(['/landing'], { fragment: 'features' })"
+            (click)="navigateSection('Features', 'features')"
             pRipple
             class="px-0 py-4 text-surface-900 dark:text-surface-0 font-medium text-xl"
           >
@@ -83,7 +85,7 @@ import { AppFloatingConfigurator } from '../../../layout/component/app.floatingc
         </li>
         <li>
           <a
-            (click)="router.navigate(['/landing'], { fragment: 'highlights' })"
+            (click)="navigateSection('Highlights', 'highlights')"
             pRipple
             class="px-0 py-4 text-surface-900 dark:text-surface-0 font-medium text-xl"
           >
@@ -92,7 +94,7 @@ import { AppFloatingConfigurator } from '../../../layout/component/app.floatingc
         </li>
         <li>
           <a
-            (click)="router.navigate(['/landing'], { fragment: 'pricing' })"
+            (click)="navigateSection('Pricing', 'pricing')"
             pRipple
             class="px-0 py-4 text-surface-900 dark:text-surface-0 font-medium text-xl"
           >
@@ -106,14 +108,36 @@ import { AppFloatingConfigurator } from '../../../layout/component/app.floatingc
           pRipple
           label="Login"
           routerLink="/auth/login"
+          (click)="trackLandingLink('Login', '/auth/login')"
           [rounded]="true"
           [text]="true"
         ></button>
-        <button pButton pRipple label="Register" routerLink="/auth/login" [rounded]="true"></button>
+        <button pButton pRipple label="Register" routerLink="/auth/login" (click)="trackLandingLink('Register', '/auth/login')" [rounded]="true"></button>
         <app-floating-configurator [float]="false" />
       </div>
     </div> `,
 })
 export class TopbarWidget {
+  private authService = inject(AuthService);
+  private posthogService = inject(PosthogService);
+
   constructor(public router: Router) {}
+
+  navigateSection(label: string, fragment: string): void {
+    this.trackLandingLink(label, `/landing`);
+    this.router.navigate(['/landing'], { fragment });
+  }
+
+  trackLandingLink(menuName: string, destination: string): void {
+    this.posthogService.trackMenuClick(
+      'navbar_link_clicked',
+      {
+        menuName,
+        menuLocation: 'Landing Navbar',
+        destination,
+        menuVariant: 'Public Landing Menu',
+      },
+      this.authService.getAnalyticsContext()
+    );
+  }
 }

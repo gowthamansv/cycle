@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
@@ -10,6 +10,8 @@ import { TextareaModule } from 'primeng/textarea';
 import { ButtonModule } from 'primeng/button';
 import { MessageModule } from 'primeng/message';
 import { AppNotificationService } from '../../common/services/notification.service';
+import { AuthService } from '../../common/services/auth.service';
+import { PosthogService } from '../../services/posthog.service';
 import { CycleDataService } from '../../services/cycle-data.service';
 import { BicycleType, CreateAppointmentDto } from '../../models/cycle-management.models';
 
@@ -295,14 +297,17 @@ import { BicycleType, CreateAppointmentDto } from '../../models/cycle-management
     </div>
   `
 })
-export class AppointmentFormComponent implements OnInit {
+export class AppointmentFormComponent implements OnInit, OnDestroy {
   private fb = inject(FormBuilder);
   private router = inject(Router);
   private notificationService = inject(AppNotificationService);
+  private authService = inject(AuthService);
+  private posthogService = inject(PosthogService);
   protected dataService = inject(CycleDataService);
 
   appointmentForm!: FormGroup;
   submitting = false;
+  private bookingCompleted = false;
 
   customerOptions: { label: string; value: string }[] = [];
   customerBicycles: { label: string; value: string; model: string; type: BicycleType }[] = [];
@@ -340,6 +345,18 @@ export class AppointmentFormComponent implements OnInit {
   ngOnInit(): void {
     this.initForm();
     this.loadData();
+  }
+
+  ngOnDestroy(): void {
+    if (!this.bookingCompleted && this.appointmentForm?.dirty) {
+      const ctx = this.authService.getAnalyticsContext();
+      this.posthogService.capture('appointment_booking_abandoned', {
+        ...(ctx.isAuthenticated && ctx.userId ? { user_id: ctx.userId } : {}),
+        user_role: ctx.userRole,
+        is_authenticated: ctx.isAuthenticated,
+        application_section: 'Appointments',
+      });
+    }
   }
 
   initForm(): void {
@@ -460,6 +477,16 @@ export class AppointmentFormComponent implements OnInit {
     this.dataService.addAppointment(dto).subscribe({
       next: (apt) => {
         this.submitting = false;
+        this.bookingCompleted = true;
+        const ctx = this.authService.getAnalyticsContext();
+        this.posthogService.capture('appointment_booking_completed', {
+          ...(ctx.isAuthenticated && ctx.userId ? { user_id: ctx.userId } : {}),
+          user_role: ctx.userRole,
+          is_authenticated: ctx.isAuthenticated,
+          application_section: 'Appointments',
+          service_type: dto.serviceType,
+          bicycle_type: dto.cycleType,
+        });
         this.notificationService.showApiSuccess('POST', 'Appointment', `Booking #${apt.id} confirmed for ${apt.customerName} on ${apt.date}.`);
         setTimeout(() => {
           this.router.navigate(['/appointments']);
@@ -467,6 +494,15 @@ export class AppointmentFormComponent implements OnInit {
       },
       error: (err) => {
         this.submitting = false;
+        const ctx = this.authService.getAnalyticsContext();
+        this.posthogService.capture('appointment_booking_failed', {
+          ...(ctx.isAuthenticated && ctx.userId ? { user_id: ctx.userId } : {}),
+          user_role: ctx.userRole,
+          is_authenticated: ctx.isAuthenticated,
+          application_section: 'Appointments',
+          service_type: dto.serviceType,
+          bicycle_type: dto.cycleType,
+        });
         this.notificationService.handleApiError('create appointment', err);
       }
     });

@@ -20,6 +20,8 @@ import { MiscService } from '../../services/misc.service';
 import { FreewheelCatalogService } from '../../services/freewheel-catalog.service';
 import { AppConfigService } from '../../app.config.service';
 import { AppNotificationService } from '../../common/services/notification.service';
+import { AuthService } from '../../common/services/auth.service';
+import { PosthogService } from '../../services/posthog.service';
 import {
   TicketResponseDto,
   UpdateTicketRequest,
@@ -863,6 +865,8 @@ import { Bicycle } from '../../models/cycle-management.models';
 export class ServicesListComponent implements OnInit {
   private fb = inject(FormBuilder);
   private ticketService = inject(TicketService);
+  private authService = inject(AuthService);
+  private posthogService = inject(PosthogService);
   private miscService = inject(MiscService);
   private catalogService = inject(FreewheelCatalogService);
   private configService = inject(AppConfigService);
@@ -1217,6 +1221,15 @@ export class ServicesListComponent implements OnInit {
   openViewDialog(ticket: TicketResponseDto): void {
     this.selectedTicketForView = ticket;
     this.viewBicycleSpecs = null;
+    const ctx = this.authService.getAnalyticsContext();
+    this.posthogService.capture('service_details_viewed', {
+      ...(ctx.isAuthenticated && ctx.userId ? { user_id: ctx.userId } : {}),
+      user_role: ctx.userRole,
+      is_authenticated: ctx.isAuthenticated,
+      application_section: 'Services',
+      ticket_status: ticket.status || 'Unknown',
+      ticket_priority: ticket.priority || 'Unknown',
+    });
 
     if (ticket.customerId) {
       this.miscService.getCustomerCycles(ticket.customerId).subscribe({

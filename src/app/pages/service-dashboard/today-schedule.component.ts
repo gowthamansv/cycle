@@ -6,6 +6,8 @@ import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
 import { TicketService } from '../../services/ticket.service';
 import { TicketResponseDto } from '../../models/api.models';
+import { AuthService } from '../../common/services/auth.service';
+import { PosthogService } from '../../services/posthog.service';
 
 @Component({
   selector: 'app-today-schedule-widget',
@@ -22,7 +24,7 @@ import { TicketResponseDto } from '../../models/api.models';
             </h3>
             <p class="text-xs text-muted-color">New & recently assigned tickets awaiting technician bench</p>
           </div>
-          <a routerLink="/services" class="text-xs font-semibold text-primary hover:underline flex items-center gap-1">
+          <a routerLink="/services" (click)="trackDashboardNav('View All Services', '/services')" class="text-xs font-semibold text-primary hover:underline flex items-center gap-1">
             View All <i class="pi pi-arrow-right text-[10px]"></i>
           </a>
         </div>
@@ -75,7 +77,7 @@ import { TicketResponseDto } from '../../models/api.models';
 
       <div class="pt-3 border-t border-surface-200 dark:border-surface-700 mt-3 flex items-center justify-between text-xs text-muted-color">
         <span>Backend Source: GET /api/tickets</span>
-        <a routerLink="/services/new" class="text-primary hover:underline font-semibold flex items-center gap-1">
+        <a routerLink="/services/new" (click)="trackDashboardNav('New Service', '/services/new')" class="text-primary hover:underline font-semibold flex items-center gap-1">
           + New Service
         </a>
       </div>
@@ -84,6 +86,20 @@ import { TicketResponseDto } from '../../models/api.models';
 })
 export class TodayScheduleWidget {
   private ticketService = inject(TicketService);
+  private authService = inject(AuthService);
+  private posthogService = inject(PosthogService);
+
+  trackDashboardNav(menuName: string, destination: string): void {
+    this.posthogService.trackMenuClick(
+      'dashboard_menu_clicked',
+      {
+        menuName,
+        menuLocation: 'Dashboard Intake Widget',
+        destination,
+      },
+      this.authService.getAnalyticsContext()
+    );
+  }
 
   // Derive incoming queue from actual backend tickets (e.g. New or Assigned or recent)
   intakeQueue = computed(() => {
